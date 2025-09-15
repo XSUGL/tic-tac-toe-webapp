@@ -1,33 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Settings</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Tic-Tac-Toe</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>Settings ⚙️</h1>
+    <div class="container">
+        <header>
+            <h1>Settings</h1>
+            <button class="back-btn" id="backToGameBtn">
+                ← Back to Game
+            </button>
+        </header>
 
-<label for="language">Language:</label>
-<select id="language">
-    <option value="en">English</option>
-    <option value="ru">Русский</option>
-    <option value="it">Italiano</option>
-</select>
+        <main class="settings-main">
+            <!-- Language Selection -->
+            <div class="setting-group">
+                <label for="languageSelect">Language:</label>
+                <select id="languageSelect" class="language-select">
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                    <option value="it">Italiano</option>
+                </select>
+            </div>
 
-<label for="code">Enter code:</label>
-<input type="text" id="code">
-<button id="checkCode">Check</button>
-<div id="codeResult"></div>
+            <!-- Code Input -->
+            <div class="setting-group">
+                <label for="codeInput">Enter Code:</label>
+                <div class="code-input-group">
+                    <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
+                    <button id="checkCodeBtn" class="check-btn">Check</button>
+                </div>
+            </div>
 
-<button id="back">← Back to Game</button>
+            <!-- Code Result Display -->
+            <div class="code-result" id="codeResult"></div>
+        </main>
+    </div>
 
-<script src="settings.js"></script>
-<script>
-document.getElementById("back").addEventListener("click", ()=>{
-    window.location.href = "index.html";
-});
-</script>
+    <script src="settings.js"></script>
 </body>
 </html>

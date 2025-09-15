@@ -60,6 +60,7 @@ const winPatterns = [
 const cells = document.querySelectorAll('.cell');
 const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 const restartBtn = document.getElementById('restartBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 const gameStatus = document.getElementById('gameStatus');
 const playerScoreEl = document.getElementById('playerScore');
 const botScoreEl = document.getElementById('botScore');
@@ -86,6 +87,10 @@ function initializeGame() {
     });
 
     restartBtn.addEventListener('click', restartGame);
+    
+    settingsBtn.addEventListener('click', function() {
+        window.location.href = 'settings.html';
+    });
 
     // Set initial status
     updateGameStatus();

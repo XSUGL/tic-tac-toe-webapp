@@ -4,6 +4,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const codeInput = document.getElementById('codeInput');
     const checkCodeBtn = document.getElementById('checkCodeBtn');
     const codeResult = document.getElementById('codeResult');
+    const backToGameBtn = document.getElementById('backToGameBtn');
+
+    // Back button handler
+    backToGameBtn.addEventListener('click', function() {
+        window.location.href = 'index.html';
+    });
 
     // Load saved language
     const savedLanguage = localStorage.getItem('gameLanguage') || 'en';
@@ -36,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function checkCode() {
-        const code = codeInput.value.trim().toLowerCase();
+        const code = codeInput.value.trim();
         
         if (code === '') {
             showCodeResult('Please enter a code', 'error');
