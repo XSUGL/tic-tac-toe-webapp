@@ -74,7 +74,7 @@ function findBlockOrRandom(){
     return empty[Math.floor(Math.random()*empty.length)];
 }
 
-// Hard логика (placeholder, можно добавить Minimax)
+// Hard логика (сейчас случайный ход, можно добавить Minimax)
 function findBestMove(b, mark){
     const empty = b.map((v,i)=>v?null:i).filter(i=>i!==null);
     return empty[Math.floor(Math.random()*empty.length)];

@@ -9,19 +9,7 @@
 <body>
 <h1 id="title">Tic-Tac-Toe</h1>
 
-<div id="settings">
-    <label for="language">Language:</label>
-    <select id="language">
-        <option value="en">English</option>
-        <option value="ru">Русский</option>
-        <option value="it">Italiano</option>
-    </select>
-
-    <label for="code">Enter code:</label>
-    <input type="text" id="code">
-    <button id="checkCode">Check</button>
-    <div id="codeResult"></div>
-</div>
+<button id="settingsBtn">⚙️ Settings</button>
 
 <div id="difficulty">
     <button data-level="easy">Easy</button>
@@ -36,5 +24,10 @@
 
 <script src="settings.js"></script>
 <script src="script.js"></script>
+<script>
+document.getElementById("settingsBtn").addEventListener("click", ()=>{
+    window.location.href = "settings.html";
+});
+</script>
 </body>
 </html>
