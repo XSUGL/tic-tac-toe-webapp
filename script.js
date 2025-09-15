@@ -1,106 +1,300 @@
-const boardEl = document.getElementById("board");
-const statusEl = document.getElementById("status");
-const restartBtn = document.getElementById("restart");
-const scoreEl = document.getElementById("score");
+// Game state
+let board = ['', '', '', '', '', '', '', '', ''];
+let currentPlayer = 'X';
+let gameActive = true;
+let difficulty = 'easy';
+let scores = {
+    player: 0,
+    bot: 0,
+    draw: 0
+};
 
-let board = Array(9).fill("");
-let currentLevel = "easy";
-let score = JSON.parse(localStorage.getItem("score")) || {player:0, bot:0, draw:0};
+// Language translations
+const translations = {
+    en: {
+        restart: 'Restart',
+        player: 'Player',
+        bot: 'Bot',
+        draw: 'Draw',
+        yourTurn: 'Your turn!',
+        botTurn: 'Bot is thinking...',
+        youWin: 'You win!',
+        botWins: 'Bot wins!',
+        gameDraw: "It's a draw!",
+        gameOver: 'Game Over'
+    },
+    ru: {
+        restart: 'Перезапуск',
+        player: 'Игрок',
+        bot: 'Бот',
+        draw: 'Ничья',
+        yourTurn: 'Ваш ход!',
+        botTurn: 'Бот думает...',
+        youWin: 'Вы выиграли!',
+        botWins: 'Бот выиграл!',
+        gameDraw: 'Ничья!',
+        gameOver: 'Игра окончена'
+    },
+    it: {
+        restart: 'Ricomincia',
+        player: 'Giocatore',
+        bot: 'Bot',
+        draw: 'Pareggio',
+        yourTurn: 'Il tuo turno!',
+        botTurn: 'Il bot sta pensando...',
+        youWin: 'Hai vinto!',
+        botWins: 'Il bot ha vinto!',
+        gameDraw: 'È un pareggio!',
+        gameOver: 'Game Over'
+    }
+};
 
-// Смена сложности
-document.querySelectorAll("#difficulty button").forEach(btn=>{
-    btn.addEventListener("click", ()=> currentLevel = btn.dataset.level);
+// Winning combinations
+const winPatterns = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6] // Diagonals
+];
+
+// DOM elements
+const cells = document.querySelectorAll('.cell');
+const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+const restartBtn = document.getElementById('restartBtn');
+const gameStatus = document.getElementById('gameStatus');
+const playerScoreEl = document.getElementById('playerScore');
+const botScoreEl = document.getElementById('botScore');
+const drawScoreEl = document.getElementById('drawScore');
+const playerLabelEl = document.getElementById('playerLabel');
+const botLabelEl = document.getElementById('botLabel');
+const drawLabelEl = document.getElementById('drawLabel');
+
+// Initialize game
+document.addEventListener('DOMContentLoaded', function() {
+    loadScores();
+    loadLanguage();
+    initializeGame();
 });
 
-// Рендер доски
-function renderBoard(){
-    boardEl.innerHTML = "";
-    board.forEach((cell, i)=>{
-        const div = document.createElement("div");
-        div.classList.add("cell");
-        if(cell) div.classList.add("taken");
-        div.textContent = cell;
-        div.addEventListener("click", ()=> playerMove(i));
-        boardEl.appendChild(div);
+function initializeGame() {
+    // Add event listeners
+    cells.forEach(cell => {
+        cell.addEventListener('click', handleCellClick);
     });
+
+    difficultyButtons.forEach(btn => {
+        btn.addEventListener('click', handleDifficultyChange);
+    });
+
+    restartBtn.addEventListener('click', restartGame);
+
+    // Set initial status
+    updateGameStatus();
+    updateScoreDisplay();
 }
 
-// Проверка победителя
-function checkWinner(b){
-    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    for(const [a,b1,c] of lines){
-        if(b[a] && b[a]===b[b1] && b[a]===b[c]) return b[a];
+function handleCellClick(event) {
+    const index = event.target.dataset.index;
+    
+    if (board[index] !== '' || !gameActive || currentPlayer !== 'X') {
+        return;
     }
-    if(b.every(cell=>cell)) return "draw";
+
+    makeMove(index, 'X');
+    
+    if (gameActive) {
+        currentPlayer = 'O';
+        updateGameStatus();
+        setTimeout(makeBotMove, 500);
+    }
+}
+
+function makeMove(index, player) {
+    board[index] = player;
+    const cell = cells[index];
+    cell.textContent = player;
+    cell.classList.add(player.toLowerCase());
+
+    if (checkWinner()) {
+        gameActive = false;
+        highlightWinningCells();
+        updateScore(player === 'X' ? 'player' : 'bot');
+    } else if (board.every(cell => cell !== '')) {
+        gameActive = false;
+        updateScore('draw');
+    }
+    
+    updateGameStatus();
+}
+
+function makeBotMove() {
+    if (!gameActive) return;
+
+    let moveIndex;
+    
+    switch(difficulty) {
+        case 'easy':
+            moveIndex = getRandomMove();
+            break;
+        case 'medium':
+            moveIndex = getMediumMove();
+            break;
+        case 'hard':
+            moveIndex = getHardMove();
+            break;
+    }
+
+    if (moveIndex !== -1) {
+        makeMove(moveIndex, 'O');
+        currentPlayer = 'X';
+    }
+}
+
+function getRandomMove() {
+    const availableMoves = board
+        .map((cell, index) => cell === '' ? index : null)
+        .filter(val => val !== null);
+    
+    return availableMoves.length > 0 
+        ? availableMoves[Math.floor(Math.random() * availableMoves.length)]
+        : -1;
+}
+
+function getMediumMove() {
+    // First, try to win
+    for (let i = 0; i < 9; i++) {
+        if (board[i] === '') {
+            board[i] = 'O';
+            if (checkWinner() === 'O') {
+                board[i] = '';
+                return i;
+            }
+            board[i] = '';
+        }
+    }
+
+    // Then, try to block player's win
+    for (let i = 0; i < 9; i++) {
+        if (board[i] === '') {
+            board[i] = 'X';
+            if (checkWinner() === 'X') {
+                board[i] = '';
+                return i;
+            }
+            board[i] = '';
+        }
+    }
+
+    // Otherwise, make random move
+    return getRandomMove();
+}
+
+function getHardMove() {
+    // Placeholder for advanced AI (could implement Minimax algorithm)
+    // For now, use medium strategy
+    return getMediumMove();
+}
+
+function checkWinner() {
+    for (let pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return board[a];
+        }
+    }
     return null;
 }
 
-// Ход игрока
-function playerMove(idx){
-    if(board[idx]) return;
-    board[idx] = "X";
-    let winner = checkWinner(board);
-    if(winner){ endGame(winner); return; }
-    botMove();
-}
-
-// Ход бота
-function botMove(){
-    let idx;
-    const empty = board.map((v,i)=>v?null:i).filter(i=>i!==null);
-    if(currentLevel==="easy"){
-        idx = empty[Math.floor(Math.random()*empty.length)];
-    } else if(currentLevel==="medium"){
-        idx = findBlockOrRandom();
-    } else { // Hard
-        idx = findBestMove(board,"O");
-    }
-    board[idx]="O";
-    let winner = checkWinner(board);
-    if(winner){ endGame(winner); return; }
-    renderBoard();
-}
-
-// Medium логика
-function findBlockOrRandom(){
-    for(let i=0;i<9;i++){
-        if(!board[i]){
-            board[i]="X";
-            if(checkWinner(board)==="X"){ board[i]=null; return i; }
-            board[i]=null;
+function highlightWinningCells() {
+    for (let pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            cells[a].classList.add('winning');
+            cells[b].classList.add('winning');
+            cells[c].classList.add('winning');
+            break;
         }
     }
-    const empty = board.map((v,i)=>v?null:i).filter(i=>i!==null);
-    return empty[Math.floor(Math.random()*empty.length)];
 }
 
-// Hard логика (сейчас случайный ход, можно добавить Minimax)
-function findBestMove(b, mark){
-    const empty = b.map((v,i)=>v?null:i).filter(i=>i!==null);
-    return empty[Math.floor(Math.random()*empty.length)];
+function handleDifficultyChange(event) {
+    difficultyButtons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    difficulty = event.target.dataset.difficulty;
 }
 
-// Конец игры
-function endGame(winner){
-    if(winner==="X"){score.player++; statusEl.textContent="You won!";}
-    else if(winner==="O"){score.bot++; statusEl.textContent="Bot won!";}
-    else{score.draw++; statusEl.textContent="Draw!";}
-    localStorage.setItem("score", JSON.stringify(score));
-    updateScore();
-    renderBoard();
+function restartGame() {
+    board = ['', '', '', '', '', '', '', '', ''];
+    currentPlayer = 'X';
+    gameActive = true;
+    
+    cells.forEach(cell => {
+        cell.textContent = '';
+        cell.classList.remove('x', 'o', 'winning');
+    });
+    
+    updateGameStatus();
 }
 
-// Обновление счёта
-function updateScore(){
-    scoreEl.textContent = `Score: Player ${score.player} - Bot ${score.bot} - Draw ${score.draw}`;
+function updateScore(winner) {
+    scores[winner]++;
+    saveScores();
+    updateScoreDisplay();
 }
 
-// Перезапуск
-restartBtn.addEventListener("click", ()=>{
-    board.fill("");
-    statusEl.textContent="";
-    renderBoard();
+function updateScoreDisplay() {
+    playerScoreEl.textContent = scores.player;
+    botScoreEl.textContent = scores.bot;
+    drawScoreEl.textContent = scores.draw;
+}
+
+function updateGameStatus() {
+    const lang = localStorage.getItem('gameLanguage') || 'en';
+    const t = translations[lang];
+    
+    if (!gameActive) {
+        const winner = checkWinner();
+        if (winner === 'X') {
+            gameStatus.textContent = t.youWin;
+        } else if (winner === 'O') {
+            gameStatus.textContent = t.botWins;
+        } else {
+            gameStatus.textContent = t.gameDraw;
+        }
+    } else {
+        if (currentPlayer === 'X') {
+            gameStatus.textContent = t.yourTurn;
+        } else {
+            gameStatus.textContent = t.botTurn;
+        }
+    }
+}
+
+function loadLanguage() {
+    const lang = localStorage.getItem('gameLanguage') || 'en';
+    const t = translations[lang];
+    
+    restartBtn.textContent = t.restart;
+    playerLabelEl.textContent = t.player;
+    botLabelEl.textContent = t.bot;
+    drawLabelEl.textContent = t.draw;
+    
+    updateGameStatus();
+}
+
+function saveScores() {
+    localStorage.setItem('ticTacToeScores', JSON.stringify(scores));
+}
+
+function loadScores() {
+    const savedScores = localStorage.getItem('ticTacToeScores');
+    if (savedScores) {
+        scores = JSON.parse(savedScores);
+    }
+}
+
+// Listen for language changes
+window.addEventListener('storage', function(e) {
+    if (e.key === 'gameLanguage') {
+        loadLanguage();
+    }
 });
-
-renderBoard();
-updateScore();

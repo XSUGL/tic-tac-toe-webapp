@@ -1,33 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tic-Tac-Toe Web App</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1 id="title">Tic-Tac-Toe</h1>
+    <div class="container">
+        <header>
+            <h1>Tic-Tac-Toe</h1>
+            <button class="settings-btn" onclick="window.location.href='settings.html'">
+                ⚙️ Settings
+            </button>
+        </header>
 
-<button id="settingsBtn">⚙️ Settings</button>
+        <main>
+            <!-- Game Board -->
+            <div class="game-board" id="gameBoard">
+                <div class="cell" data-index="0"></div>
+                <div class="cell" data-index="1"></div>
+                <div class="cell" data-index="2"></div>
+                <div class="cell" data-index="3"></div>
+                <div class="cell" data-index="4"></div>
+                <div class="cell" data-index="5"></div>
+                <div class="cell" data-index="6"></div>
+                <div class="cell" data-index="7"></div>
+                <div class="cell" data-index="8"></div>
+            </div>
 
-<div id="difficulty">
-    <button data-level="easy">Easy</button>
-    <button data-level="medium">Medium</button>
-    <button data-level="hard">Hard</button>
-</div>
+            <!-- Game Controls -->
+            <div class="controls">
+                <div class="difficulty-buttons">
+                    <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+                    <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+                    <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+                </div>
+                
+                <button class="restart-btn" id="restartBtn">Restart</button>
+            </div>
 
-<div id="board"></div>
-<p id="status"></p>
-<button id="restart">Restart</button>
-<p id="score">Score: Player 0 - Bot 0 - Draw 0</p>
+            <!-- Score Display -->
+            <div class="score-display">
+                <div class="score-item">
+                    <span class="score-label" id="playerLabel">Player</span>
+                    <span class="score-value" id="playerScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label" id="botLabel">Bot</span>
+                    <span class="score-value" id="botScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label" id="drawLabel">Draw</span>
+                    <span class="score-value" id="drawScore">0</span>
+                </div>
+            </div>
 
-<script src="settings.js"></script>
-<script src="script.js"></script>
-<script>
-document.getElementById("settingsBtn").addEventListener("click", ()=>{
-    window.location.href = "settings.html";
-});
-</script>
+            <!-- Game Status -->
+            <div class="game-status" id="gameStatus">Your turn!</div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
