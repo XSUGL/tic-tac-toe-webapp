@@ -5,12 +5,14 @@ const scoreEl = document.getElementById("score");
 
 let board = Array(9).fill("");
 let currentLevel = "easy";
-let score = {player:0, bot:0, draw:0};
+let score = JSON.parse(localStorage.getItem("score")) || {player:0, bot:0, draw:0};
 
+// Смена сложности
 document.querySelectorAll("#difficulty button").forEach(btn=>{
     btn.addEventListener("click", ()=> currentLevel = btn.dataset.level);
 });
 
+// Рендер доски
 function renderBoard(){
     boardEl.innerHTML = "";
     board.forEach((cell, i)=>{
@@ -23,6 +25,7 @@ function renderBoard(){
     });
 }
 
+// Проверка победителя
 function checkWinner(b){
     const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     for(const [a,b1,c] of lines){
@@ -32,14 +35,16 @@ function checkWinner(b){
     return null;
 }
 
+// Ход игрока
 function playerMove(idx){
     if(board[idx]) return;
     board[idx] = "X";
-    const winner = checkWinner(board);
+    let winner = checkWinner(board);
     if(winner){ endGame(winner); return; }
     botMove();
 }
 
+// Ход бота
 function botMove(){
     let idx;
     const empty = board.map((v,i)=>v?null:i).filter(i=>i!==null);
@@ -47,15 +52,16 @@ function botMove(){
         idx = empty[Math.floor(Math.random()*empty.length)];
     } else if(currentLevel==="medium"){
         idx = findBlockOrRandom();
-    } else { // hard
+    } else { // Hard
         idx = findBestMove(board,"O");
     }
     board[idx]="O";
-    const winner = checkWinner(board);
+    let winner = checkWinner(board);
     if(winner){ endGame(winner); return; }
     renderBoard();
 }
 
+// Medium логика
 function findBlockOrRandom(){
     for(let i=0;i<9;i++){
         if(!board[i]){
@@ -68,24 +74,28 @@ function findBlockOrRandom(){
     return empty[Math.floor(Math.random()*empty.length)];
 }
 
-// Минималистичный hard (Minimax можно добавить)
+// Hard логика (placeholder, можно добавить Minimax)
 function findBestMove(b, mark){
     const empty = b.map((v,i)=>v?null:i).filter(i=>i!==null);
-    return empty[Math.floor(Math.random()*empty.length)]; // placeholder
+    return empty[Math.floor(Math.random()*empty.length)];
 }
 
+// Конец игры
 function endGame(winner){
-    if(winner==="X"){score.player++; statusEl.textContent="You won!"; }
-    else if(winner==="O"){score.bot++; statusEl.textContent="Bot won!"; }
-    else{score.draw++; statusEl.textContent="Draw!"; }
+    if(winner==="X"){score.player++; statusEl.textContent="You won!";}
+    else if(winner==="O"){score.bot++; statusEl.textContent="Bot won!";}
+    else{score.draw++; statusEl.textContent="Draw!";}
+    localStorage.setItem("score", JSON.stringify(score));
     updateScore();
     renderBoard();
 }
 
+// Обновление счёта
 function updateScore(){
     scoreEl.textContent = `Score: Player ${score.player} - Bot ${score.bot} - Draw ${score.draw}`;
 }
 
+// Перезапуск
 restartBtn.addEventListener("click", ()=>{
     board.fill("");
     statusEl.textContent="";
@@ -93,3 +103,4 @@ restartBtn.addEventListener("click", ()=>{
 });
 
 renderBoard();
+updateScore();
