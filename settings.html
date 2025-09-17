@@ -4,21 +4,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Tic-Tac-Toe</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #4a5568;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        /* Settings Page Styles */
+        .settings-main {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .setting-group {
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .language-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .language-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .code-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .code-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .check-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .check-btn:hover {
+            background: #5a67d8;
+        }
+
+        /* Code Result Styles */
+        .code-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .code-result.success {
+            background: #c6f6d5;
+            border: 2px solid #68d391;
+            color: #22543d;
+        }
+
+        .code-result.error {
+            background: #fed7d7;
+            border: 2px solid #fc8181;
+            color: #742a2a;
+        }
+
+        .code-result.special {
+            background: #e6fffa;
+            border: 2px solid #81e6d9;
+            color: #234e52;
+            font-size: 18px;
+        }
+
+        .code-result.hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Settings</h1>
+            <h1 id="settingsTitle">Settings</h1>
             <button class="back-btn" id="backToGameBtn">
-                ← Back to Game
+                ← <span id="backToGameText">Back to Game</span>
             </button>
         </header>
 
         <main class="settings-main">
             <!-- Language Selection -->
             <div class="setting-group">
-                <label for="languageSelect">Language:</label>
+                <label for="languageSelect" id="languageLabel">Language:</label>
                 <select id="languageSelect" class="language-select">
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
@@ -28,7 +187,7 @@
 
             <!-- Code Input -->
             <div class="setting-group">
-                <label for="codeInput">Enter Code:</label>
+                <label for="codeInput" id="codeLabel">Enter Code:</label>
                 <div class="code-input-group">
                     <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
                     <button id="checkCodeBtn" class="check-btn">Check</button>
@@ -36,10 +195,139 @@
             </div>
 
             <!-- Code Result Display -->
-            <div class="code-result" id="codeResult"></div>
+            <div class="code-result hidden" id="codeResult"></div>
         </main>
     </div>
 
-    <script src="settings.js"></script>
+    <script>
+        // Language translations for settings page
+        const settingsTranslations = {
+            en: {
+                settingsTitle: 'Settings',
+                backToGame: 'Back to Game',
+                languageLabel: 'Language:',
+                codeLabel: 'Enter Code:',
+                codePlaceholder: 'Enter special code...',
+                checkButton: 'Check',
+                languageSaved: 'Language saved!',
+                enterCode: 'Please enter a code',
+                invalidCode: 'Invalid code'
+            },
+            ru: {
+                settingsTitle: 'Настройки',
+                backToGame: 'Вернуться к игре',
+                languageLabel: 'Язык:',
+                codeLabel: 'Введите код:',
+                codePlaceholder: 'Введите специальный код...',
+                checkButton: 'Проверить',
+                languageSaved: 'Язык сохранен!',
+                enterCode: 'Пожалуйста, введите код',
+                invalidCode: 'Неверный код'
+            },
+            it: {
+                settingsTitle: 'Impostazioni',
+                backToGame: 'Torna al gioco',
+                languageLabel: 'Lingua:',
+                codeLabel: 'Inserisci codice:',
+                codePlaceholder: 'Inserisci codice speciale...',
+                checkButton: 'Verifica',
+                languageSaved: 'Lingua salvata!',
+                enterCode: 'Per favore inserisci un codice',
+                invalidCode: 'Codice non valido'
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const languageSelect = document.getElementById('languageSelect');
+            const codeInput = document.getElementById('codeInput');
+            const checkCodeBtn = document.getElementById('checkCodeBtn');
+            const codeResult = document.getElementById('codeResult');
+            const backToGameBtn = document.getElementById('backToGameBtn');
+
+            // Back button handler
+            backToGameBtn.addEventListener('click', function() {
+                window.history.back();
+            });
+
+            // Load saved language
+            const savedLanguage = localStorage.getItem('gameLanguage') || 'en';
+            languageSelect.value = savedLanguage;
+            updateSettingsLanguage(savedLanguage);
+
+            // Language change handler
+            languageSelect.addEventListener('change', function() {
+                const selectedLanguage = languageSelect.value;
+                localStorage.setItem('gameLanguage', selectedLanguage);
+                
+                // Update current page language
+                updateSettingsLanguage(selectedLanguage);
+                
+                // Show confirmation
+                const t = settingsTranslations[selectedLanguage];
+                showCodeResult(t.languageSaved, 'success');
+            });
+
+            // Code checking logic
+            checkCodeBtn.addEventListener('click', function() {
+                checkCode();
+            });
+
+            codeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkCode();
+                }
+            });
+
+            function checkCode() {
+                const code = codeInput.value.trim();
+                const currentLang = localStorage.getItem('gameLanguage') || 'en';
+                const t = settingsTranslations[currentLang];
+                
+                if (code === '') {
+                    showCodeResult(t.enterCode, 'error');
+                    return;
+                }
+
+                switch(code) {
+                    case '42':
+                        showCodeResult('Hello World', 'special');
+                        break;
+                    case 'love':
+                        showCodeResult('Y + A = ❤️', 'special');
+                        break;
+                    default:
+                        showCodeResult(t.invalidCode, 'error');
+                        break;
+                }
+
+                // Clear input
+                codeInput.value = '';
+            }
+
+            function updateSettingsLanguage(lang) {
+                const t = settingsTranslations[lang];
+                
+                // Update page elements
+                document.getElementById('settingsTitle').textContent = t.settingsTitle;
+                document.getElementById('backToGameText').textContent = t.backToGame;
+                document.getElementById('languageLabel').textContent = t.languageLabel;
+                document.getElementById('codeLabel').textContent = t.codeLabel;
+                document.getElementById('codeInput').placeholder = t.codePlaceholder;
+                document.getElementById('checkCodeBtn').textContent = t.checkButton;
+            }
+
+            function showCodeResult(message, type) {
+                codeResult.textContent = message;
+                codeResult.className = `code-result ${type}`;
+                
+                // Auto-hide success messages after 3 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        codeResult.classList.add('hidden');
+                    }, 3000);
+                }
+            }
+        });
+    </script>
 </body>
 </html>
