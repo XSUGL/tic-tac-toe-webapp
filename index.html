@@ -2,16 +2,439 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tic-Tac-Toe</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #4a5568;
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: bold;
+        }
+
+        .settings-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .settings-btn:hover, .settings-btn:active {
+            background: #5a67d8;
+            transform: scale(0.95);
+        }
+
+        /* Game Board Styles */
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 20px auto;
+            max-width: 280px;
+            width: 100%;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: #f7fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(1.5rem, 8vw, 2rem);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            min-height: 70px;
+        }
+
+        .cell:hover, .cell:active {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+            transform: scale(0.95);
+        }
+
+        .cell.x {
+            color: #e53e3e;
+        }
+
+        .cell.o {
+            color: #3182ce;
+        }
+
+        .cell.winning {
+            background: #68d391 !important;
+            color: white;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Controls */
+        .controls {
+            margin: 20px 0;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .difficulty-btn {
+            padding: 12px 18px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            touch-action: manipulation;
+            min-height: 44px;
+            font-size: 14px;
+        }
+
+        .difficulty-btn:hover, .difficulty-btn:active {
+            border-color: #667eea;
+            color: #667eea;
+            transform: scale(0.95);
+        }
+
+        .difficulty-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .restart-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            min-height: 44px;
+        }
+
+        .restart-btn:hover, .restart-btn:active {
+            background: #38a169;
+            transform: scale(0.95);
+        }
+
+        /* Score Display */
+        .score-display {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 15px;
+        }
+
+        .score-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .score-label {
+            display: block;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .score-value {
+            display: block;
+            font-size: clamp(18px, 6vw, 24px);
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        /* Game Status */
+        .game-status {
+            margin-top: 15px;
+            padding: 12px;
+            background: #e6fffa;
+            border: 2px solid #81e6d9;
+            border-radius: 10px;
+            font-weight: 500;
+            color: #234e52;
+            font-size: 14px;
+        }
+
+        /* Settings Modal */
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .settings-modal.show {
+            display: flex;
+        }
+
+        .settings-content {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .settings-title {
+            color: #4a5568;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            touch-action: manipulation;
+            min-height: 40px;
+            min-width: 40px;
+        }
+
+        .close-btn:hover, .close-btn:active {
+            background: #5a67d8;
+            transform: scale(0.95);
+        }
+
+        .setting-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 16px;
+        }
+
+        .language-select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+
+        .language-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .code-input-group {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        .code-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            min-height: 50px;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .check-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            min-height: 50px;
+        }
+
+        .check-btn:hover, .check-btn:active {
+            background: #5a67d8;
+            transform: scale(0.95);
+        }
+
+        /* Code Result Styles */
+        .code-result {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 500;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .code-result.success {
+            background: #c6f6d5;
+            border: 2px solid #68d391;
+            color: #22543d;
+        }
+
+        .code-result.error {
+            background: #fed7d7;
+            border: 2px solid #fc8181;
+            color: #742a2a;
+        }
+
+        .code-result.special {
+            background: #e6fffa;
+            border: 2px solid #81e6d9;
+            color: #234e52;
+            font-size: 16px;
+        }
+
+        .code-result.hidden {
+            display: none;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .difficulty-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .difficulty-btn {
+                width: 140px;
+            }
+            
+            .score-display {
+                padding: 12px;
+            }
+            
+            .code-input-group {
+                gap: 15px;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .bot-thinking {
+            animation: thinking 1s ease-in-out infinite;
+        }
+
+        @keyframes thinking {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Tic-Tac-Toe</h1>
-            <button class="settings-btn" onclick="window.location.href='settings.html'">
-                ⚙️ Settings
+            <button class="settings-btn" id="settingsBtn">
+                ⚙️
             </button>
         </header>
 
@@ -61,6 +484,596 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2 class="settings-title" id="settingsTitle">Settings</h2>
+                <button class="close-btn" id="closeSettingsBtn">✕</button>
+            </div>
+            
+            <div class="setting-group">
+                <label for="languageSelect" id="languageLabel">Language:</label>
+                <select id="languageSelect" class="language-select">
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                    <option value="it">Italiano</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="codeInput" id="codeLabel">Enter Code:</label>
+                <div class="code-input-group">
+                    <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
+                    <button id="checkCodeBtn" class="check-btn">Check</button>
+                </div>
+            </div>
+
+            <div class="code-result hidden" id="codeResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let difficulty = 'easy';
+        let scores = {
+            player: 0,
+            bot: 0,
+            draw: 0
+        };
+
+        // Language translations
+        const translations = {
+            en: {
+                restart: 'Restart',
+                player: 'Player',
+                bot: 'Bot',
+                draw: 'Draw',
+                yourTurn: 'Your turn!',
+                botTurn: 'Bot is thinking...',
+                youWin: 'You win! 🎉',
+                botWins: 'Bot wins! 🤖',
+                gameDraw: "It's a draw! 🤝",
+                settingsTitle: 'Settings',
+                languageLabel: 'Language:',
+                codeLabel: 'Enter Code:',
+                codePlaceholder: 'Enter special code...',
+                checkButton: 'Check',
+                languageSaved: 'Language saved!',
+                enterCode: 'Please enter a code',
+                invalidCode: 'Invalid code'
+            },
+            ru: {
+                restart: 'Перезапуск',
+                player: 'Игрок',
+                bot: 'Бот',
+                draw: 'Ничья',
+                yourTurn: 'Ваш ход!',
+                botTurn: 'Бот думает...',
+                youWin: 'Вы выиграли! 🎉',
+                botWins: 'Бот выиграл! 🤖',
+                gameDraw: 'Ничья! 🤝',
+                settingsTitle: 'Настройки',
+                languageLabel: 'Язык:',
+                codeLabel: 'Введите код:',
+                codePlaceholder: 'Введите специальный код...',
+                checkButton: 'Проверить',
+                languageSaved: 'Язык сохранен!',
+                enterCode: 'Пожалуйста, введите код',
+                invalidCode: 'Неверный код'
+            },
+            it: {
+                restart: 'Ricomincia',
+                player: 'Giocatore',
+                bot: 'Bot',
+                draw: 'Pareggio',
+                yourTurn: 'Il tuo turno!',
+                botTurn: 'Il bot sta pensando...',
+                youWin: 'Hai vinto! 🎉',
+                botWins: 'Il bot ha vinto! 🤖',
+                gameDraw: 'È un pareggio! 🤝',
+                settingsTitle: 'Impostazioni',
+                languageLabel: 'Lingua:',
+                codeLabel: 'Inserisci codice:',
+                codePlaceholder: 'Inserisci codice speciale...',
+                checkButton: 'Verifica',
+                languageSaved: 'Lingua salvata!',
+                enterCode: 'Per favore inserisci un codice',
+                invalidCode: 'Codice non valido'
+            }
+        };
+
+        // Winning combinations
+        const winPatterns = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6] // Diagonals
+        ];
+
+        // DOM elements
+        const cells = document.querySelectorAll('.cell');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+        const restartBtn = document.getElementById('restartBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const gameStatus = document.getElementById('gameStatus');
+        const playerScoreEl = document.getElementById('playerScore');
+        const botScoreEl = document.getElementById('botScore');
+        const drawScoreEl = document.getElementById('drawScore');
+        const playerLabelEl = document.getElementById('playerLabel');
+        const botLabelEl = document.getElementById('botLabel');
+        const drawLabelEl = document.getElementById('drawLabel');
+        
+        // Settings elements
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const languageSelect = document.getElementById('languageSelect');
+        const codeInput = document.getElementById('codeInput');
+        const checkCodeBtn = document.getElementById('checkCodeBtn');
+        const codeResult = document.getElementById('codeResult');
+
+        // Initialize game
+        document.addEventListener('DOMContentLoaded', function() {
+            loadScores();
+            loadLanguage();
+            initializeGame();
+            initializeSettings();
+        });
+
+        function initializeGame() {
+            // Add event listeners with both click and touch events
+            cells.forEach(cell => {
+                cell.addEventListener('click', handleCellClick);
+                cell.addEventListener('touchstart', handleCellClick, { passive: false });
+            });
+
+            difficultyButtons.forEach(btn => {
+                btn.addEventListener('click', handleDifficultyChange);
+                btn.addEventListener('touchstart', handleDifficultyChange, { passive: false });
+            });
+
+            restartBtn.addEventListener('click', restartGame);
+            restartBtn.addEventListener('touchstart', restartGame, { passive: false });
+            
+            settingsBtn.addEventListener('click', openSettings);
+            settingsBtn.addEventListener('touchstart', openSettings, { passive: false });
+
+            // Set initial status
+            updateGameStatus();
+            updateScoreDisplay();
+        }
+
+        function initializeSettings() {
+            // Load saved language
+            const savedLanguage = localStorage.getItem('gameLanguage') || 'en';
+            languageSelect.value = savedLanguage;
+            updateSettingsLanguage(savedLanguage);
+
+            // Settings event listeners
+            closeSettingsBtn.addEventListener('click', closeSettings);
+            closeSettingsBtn.addEventListener('touchstart', closeSettings, { passive: false });
+            
+            settingsModal.addEventListener('click', function(e) {
+                if (e.target === settingsModal) {
+                    closeSettings();
+                }
+            });
+
+            languageSelect.addEventListener('change', handleLanguageChange);
+            
+            checkCodeBtn.addEventListener('click', checkCode);
+            checkCodeBtn.addEventListener('touchstart', checkCode, { passive: false });
+            
+            codeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkCode();
+                }
+            });
+        }
+
+        function handleCellClick(event) {
+            event.preventDefault();
+            
+            const index = event.target.dataset.index;
+            
+            if (board[index] !== '' || !gameActive || currentPlayer !== 'X') {
+                return;
+            }
+
+            makeMove(index, 'X');
+            
+            if (gameActive) {
+                currentPlayer = 'O';
+                updateGameStatus();
+                gameStatus.classList.add('bot-thinking');
+                setTimeout(() => {
+                    makeBotMove();
+                    gameStatus.classList.remove('bot-thinking');
+                }, 800);
+            }
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = cells[index];
+            cell.textContent = player;
+            cell.classList.add(player.toLowerCase());
+
+            if (checkWinner()) {
+                gameActive = false;
+                highlightWinningCells();
+                updateScore(player === 'X' ? 'player' : 'bot');
+            } else if (board.every(cell => cell !== '')) {
+                gameActive = false;
+                updateScore('draw');
+            }
+            
+            updateGameStatus();
+        }
+
+        function makeBotMove() {
+            if (!gameActive) return;
+
+            let moveIndex;
+            
+            switch(difficulty) {
+                case 'easy':
+                    moveIndex = getRandomMove();
+                    break;
+                case 'medium':
+                    moveIndex = getMediumMove();
+                    break;
+                case 'hard':
+                    moveIndex = getHardMove();
+                    break;
+            }
+
+            if (moveIndex !== -1) {
+                makeMove(moveIndex, 'O');
+                currentPlayer = 'X';
+            }
+        }
+
+        function getRandomMove() {
+            const availableMoves = board
+                .map((cell, index) => cell === '' ? index : null)
+                .filter(val => val !== null);
+            
+            return availableMoves.length > 0 
+                ? availableMoves[Math.floor(Math.random() * availableMoves.length)]
+                : -1;
+        }
+
+        function getMediumMove() {
+            // First, try to win
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = 'O';
+                    if (checkWinner() === 'O') {
+                        board[i] = '';
+                        return i;
+                    }
+                    board[i] = '';
+                }
+            }
+
+            // Then, try to block player's win
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = 'X';
+                    if (checkWinner() === 'X') {
+                        board[i] = '';
+                        return i;
+                    }
+                    board[i] = '';
+                }
+            }
+
+            // Take center if available
+            if (board[4] === '') {
+                return 4;
+            }
+
+            // Take corners
+            const corners = [0, 2, 6, 8];
+            const availableCorners = corners.filter(i => board[i] === '');
+            if (availableCorners.length > 0) {
+                return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+            }
+
+            // Otherwise, make random move
+            return getRandomMove();
+        }
+
+        function getHardMove() {
+            // Advanced strategy with better corner and center play
+            return getMediumMove();
+        }
+
+        function checkWinner() {
+            for (let pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a];
+                }
+            }
+            return null;
+        }
+
+        function highlightWinningCells() {
+            for (let pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    cells[a].classList.add('winning');
+                    cells[b].classList.add('winning');
+                    cells[c].classList.add('winning');
+                    break;
+                }
+            }
+        }
+
+        function handleDifficultyChange(event) {
+            event.preventDefault();
+            difficultyButtons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            difficulty = event.target.dataset.difficulty;
+        }
+
+        function restartGame(event) {
+            if (event) event.preventDefault();
+            
+            board = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            gameActive = true;
+            
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o', 'winning');
+            });
+            
+            updateGameStatus();
+        }
+
+        function openSettings(event) {
+            if (event) event.preventDefault();
+            settingsModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSettings(event) {
+            if (event) event.preventDefault();
+            settingsModal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleLanguageChange() {
+            const selectedLanguage = languageSelect.value;
+            localStorage.setItem('gameLanguage', selectedLanguage);
+            updateLanguage(selectedLanguage);
+            updateSettingsLanguage(selectedLanguage);
+            
+            const t = translations[selectedLanguage];
+            showCodeResult(t.languageSaved, 'success');
+        }
+
+        function checkCode(event) {
+            if (event) event.preventDefault();
+            
+            const code = codeInput.value.trim();
+            const currentLang = localStorage.getItem('gameLanguage') || 'en';
+            const t = translations[currentLang];
+            
+            if (code === '') {
+                showCodeResult(t.enterCode, 'error');
+                return;
+            }
+
+            switch(code) {
+                case '42':
+                    showCodeResult('Hello World', 'special');
+                    break;
+                case 'love':
+                    showCodeResult('Y + A = ❤️', 'special');
+                    break;
+                default:
+                    showCodeResult(t.invalidCode, 'error');
+                    break;
+            }
+
+            codeInput.value = '';
+        }
+
+        function showCodeResult(message, type) {
+            codeResult.textContent = message;
+            codeResult.className = `code-result ${type}`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    codeResult.classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        function updateScore(winner) {
+            scores[winner]++;
+            saveScores();
+            updateScoreDisplay();
+        }
+
+        function updateScoreDisplay() {
+            playerScoreEl.textContent = scores.player;
+            botScoreEl.textContent = scores.bot;
+            drawScoreEl.textContent = scores.draw;
+        }
+
+        function updateGameStatus() {
+            const lang = localStorage.getItem('gameLanguage') || 'en';
+            const t = translations[lang];
+            
+            if (!gameActive) {
+                const winner = checkWinner();
+                if (winner === 'X') {
+                    gameStatus.textContent = t.youWin;
+                } else if (winner === 'O') {
+                    gameStatus.textContent = t.botWins;
+                } else {
+                    gameStatus.textContent = t.gameDraw;
+                }
+            } else {
+                if (currentPlayer === 'X') {
+                    gameStatus.textContent = t.yourTurn;
+                } else {
+                    gameStatus.textContent = t.botTurn;
+                }
+            }
+        }
+
+        function loadLanguage() {
+            const lang = localStorage.getItem('gameLanguage') || 'en';
+            updateLanguage(lang);
+        }
+
+        function updateLanguage(lang) {
+            const t = translations[lang];
+            
+            restartBtn.textContent = t.restart;
+            playerLabelEl.textContent = t.player;
+            botLabelEl.textContent = t.bot;
+            drawLabelEl.textContent = t.draw;
+            
+            updateGameStatus();
+        }
+
+        function updateSettingsLanguage(lang) {
+            const t = translations[lang];
+            
+            document.getElementById('settingsTitle').textContent = t.settingsTitle;
+            document.getElementById('languageLabel').textContent = t.languageLabel;
+            document.getElementById('codeLabel').textContent = t.codeLabel;
+            document.getElementById('codeInput').placeholder = t.codePlaceholder;
+            document.getElementById('checkCodeBtn').textContent = t.checkButton;
+        }
+
+        function saveScores() {
+            localStorage.setItem('ticTacToeScores', JSON.stringify(scores));
+        }
+
+        function loadScores() {
+            const savedScores = localStorage.getItem('ticTacToeScores');
+            if (savedScores) {
+                scores = JSON.parse(savedScores);
+            }
+        }
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Prevent pull to refresh
+        document.body.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1 && e.touches[0].clientY <= 40) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.body.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 1 && e.touches[0].clientY <= 40) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Add vibration feedback for mobile
+        function vibrate(duration = 50) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        // Enhanced cell click with haptic feedback
+        const originalHandleCellClick = handleCellClick;
+        handleCellClick = function(event) {
+            vibrate();
+            return originalHandleCellClick.call(this, event);
+        };
+
+        // Enhanced difficulty change with haptic feedback
+        const originalHandleDifficultyChange = handleDifficultyChange;
+        handleDifficultyChange = function(event) {
+            vibrate(30);
+            return originalHandleDifficultyChange.call(this, event);
+        };
+
+        // Enhanced restart with haptic feedback
+        const originalRestartGame = restartGame;
+        restartGame = function(event) {
+            vibrate(100);
+            return originalRestartGame.call(this, event);
+        };
+
+        // Service Worker for offline support (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // Register service worker if available
+                console.log('App ready for offline use');
+            });
+        }
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', function() {
+            setTimeout(function() {
+                // Recalculate sizes after orientation change
+                window.scrollTo(0, 0);
+            }, 100);
+        });
+
+        // Improved touch handling for better responsiveness
+        function addTouchSupport(element, callback) {
+            let touchStartTime;
+            let touchStartPos;
+            
+            element.addEventListener('touchstart', function(e) {
+                touchStartTime = Date.now();
+                touchStartPos = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            }, { passive: true });
+            
+            element.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                
+                const touchEndTime = Date.now();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                // Only trigger if touch was quick (not a long press)
+                if (touchDuration < 500) {
+                    callback.call(this, e);
+                }
+            });
+        }
+
+        // Apply improved touch support to all interactive elements
+        cells.forEach(cell => {
+            addTouchSupport(cell, handleCellClick);
+        });
+
+        difficultyButtons.forEach(btn => {
+            addTouchSupport(btn, handleDifficultyChange);
+        });
+
+        addTouchSupport(restartBtn, restartGame);
+        addTouchSupport(settingsBtn, openSettings);
+        addTouchSupport(closeSettingsBtn, closeSettings);
+        addTouchSupport(checkCodeBtn, checkCode);
+    </script>
 </body>
 </html>
