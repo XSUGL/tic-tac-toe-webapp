@@ -355,15 +355,17 @@
         /* Code Result Styles */
         .code-result {
             margin-top: 15px;
-            padding: 12px;
+            padding: 15px;
             border-radius: 10px;
             font-weight: 500;
-            min-height: 45px;
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
-            font-size: 14px;
+            transition: opacity 0.3s ease;
+            font-size: 16px;
+            text-align: center;
+            word-break: break-word;
         }
 
         .code-result.success {
@@ -382,11 +384,13 @@
             background: #e6fffa;
             border: 2px solid #81e6d9;
             color: #234e52;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .code-result.hidden {
-            display: none;
+            display: none !important;
+            opacity: 0;
         }
 
         /* Mobile optimizations */
@@ -699,6 +703,25 @@
                     setTimeout(checkCode, 100); // Small delay to prevent reload
                 }
             });
+
+            // Clear result when user starts typing new code
+            codeInput.addEventListener('focus', function() {
+                // Clear any existing timeouts
+                if (window.codeResultTimeout) {
+                    clearTimeout(window.codeResultTimeout);
+                }
+                // Don't hide result immediately, let user see it while typing
+            });
+
+            codeInput.addEventListener('input', function() {
+                // Only hide if user starts typing something new and there's an old result
+                if (this.value.length === 1 && !codeResult.classList.contains('hidden')) {
+                    setTimeout(() => {
+                        codeResult.classList.add('hidden');
+                        codeResult.style.display = 'none';
+                    }, 1000); // Give user time to see previous result
+                }
+            });
         }
 
         function handleCellClick(event) {
@@ -893,42 +916,56 @@
             
             console.log('Checking code:', code); // Debug log
             
+            // Clear previous result first
+            codeResult.classList.add('hidden');
+            codeResult.style.display = 'none';
+            
             if (code === '') {
-                showCodeResult(t.enterCode, 'error');
+                setTimeout(() => showCodeResult(t.enterCode, 'error'), 100);
                 return;
             }
 
             // Check codes without any event handling
-            if (code === '42') {
-                showCodeResult('Hello World', 'special');
-            } else if (code === 'love') {
-                showCodeResult('Y + A = ❤️', 'special');
-            } else {
-                showCodeResult(t.invalidCode, 'error');
-            }
+            setTimeout(() => {
+                if (code === '42') {
+                    showCodeResult('Hello World', 'special');
+                } else if (code === 'love') {
+                    showCodeResult('Y + A = ❤️', 'special');
+                } else {
+                    showCodeResult(t.invalidCode, 'error');
+                }
+            }, 100);
 
-            // Clear input after a delay
+            // Clear input after showing result
             setTimeout(() => {
                 codeInput.value = '';
-            }, 100);
+            }, 150);
         }
 
         function showCodeResult(message, type) {
             console.log('Showing result:', message, type); // Debug log
             
-            // Remove hidden class first
+            // Show the result container
             codeResult.classList.remove('hidden');
+            codeResult.style.display = 'flex';
             
             // Set content and type
             codeResult.textContent = message;
             codeResult.className = `code-result ${type}`;
             
-            // Auto-hide success messages after 4 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    codeResult.classList.add('hidden');
-                }, 4000);
+            // Clear any existing timeouts
+            if (window.codeResultTimeout) {
+                clearTimeout(window.codeResultTimeout);
             }
+            
+            // Auto-hide only success messages after 5 seconds
+            if (type === 'success') {
+                window.codeResultTimeout = setTimeout(() => {
+                    codeResult.classList.add('hidden');
+                    codeResult.style.display = 'none';
+                }, 5000);
+            }
+            // Error and special messages stay visible until next action
         }
 
         function updateScore(winner) {
