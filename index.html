@@ -623,22 +623,34 @@
         });
 
         function initializeGame() {
-            // Add event listeners with both click and touch events
+            // Simplified event listeners - only click events
             cells.forEach(cell => {
-                cell.addEventListener('click', handleCellClick);
-                cell.addEventListener('touchstart', handleCellClick, { passive: false });
+                cell.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCellClick(e);
+                });
             });
 
             difficultyButtons.forEach(btn => {
-                btn.addEventListener('click', handleDifficultyChange);
-                btn.addEventListener('touchstart', handleDifficultyChange, { passive: false });
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDifficultyChange(e);
+                });
             });
 
-            restartBtn.addEventListener('click', restartGame);
-            restartBtn.addEventListener('touchstart', restartGame, { passive: false });
+            restartBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                restartGame();
+            });
             
-            settingsBtn.addEventListener('click', openSettings);
-            settingsBtn.addEventListener('touchstart', openSettings, { passive: false });
+            settingsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSettings();
+            });
 
             // Set initial status
             updateGameStatus();
@@ -651,25 +663,40 @@
             languageSelect.value = savedLanguage;
             updateSettingsLanguage(savedLanguage);
 
-            // Settings event listeners
-            closeSettingsBtn.addEventListener('click', closeSettings);
-            closeSettingsBtn.addEventListener('touchstart', closeSettings, { passive: false });
+            // Settings event listeners - ONLY click events for mobile compatibility
+            closeSettingsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeSettings();
+            });
             
             settingsModal.addEventListener('click', function(e) {
                 if (e.target === settingsModal) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     closeSettings();
                 }
             });
 
-            languageSelect.addEventListener('change', handleLanguageChange);
+            languageSelect.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLanguageChange();
+            });
             
-            checkCodeBtn.addEventListener('click', checkCode);
-            checkCodeBtn.addEventListener('touchstart', checkCode, { passive: false });
+            // Simple click handler for check button
+            checkCodeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setTimeout(checkCode, 100); // Small delay to prevent reload
+            });
             
-            codeInput.addEventListener('keypress', function(e) {
+            // Enter key support
+            codeInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    checkCode();
+                    e.stopPropagation();
+                    setTimeout(checkCode, 100); // Small delay to prevent reload
                 }
             });
         }
@@ -859,41 +886,48 @@
             showCodeResult(t.languageSaved, 'success');
         }
 
-        function checkCode(event) {
-            if (event) event.preventDefault();
-            
+        function checkCode() {
             const code = codeInput.value.trim();
             const currentLang = localStorage.getItem('gameLanguage') || 'en';
             const t = translations[currentLang];
+            
+            console.log('Checking code:', code); // Debug log
             
             if (code === '') {
                 showCodeResult(t.enterCode, 'error');
                 return;
             }
 
-            switch(code) {
-                case '42':
-                    showCodeResult('Hello World', 'special');
-                    break;
-                case 'love':
-                    showCodeResult('Y + A = ❤️', 'special');
-                    break;
-                default:
-                    showCodeResult(t.invalidCode, 'error');
-                    break;
+            // Check codes without any event handling
+            if (code === '42') {
+                showCodeResult('Hello World', 'special');
+            } else if (code === 'love') {
+                showCodeResult('Y + A = ❤️', 'special');
+            } else {
+                showCodeResult(t.invalidCode, 'error');
             }
 
-            codeInput.value = '';
+            // Clear input after a delay
+            setTimeout(() => {
+                codeInput.value = '';
+            }, 100);
         }
 
         function showCodeResult(message, type) {
+            console.log('Showing result:', message, type); // Debug log
+            
+            // Remove hidden class first
+            codeResult.classList.remove('hidden');
+            
+            // Set content and type
             codeResult.textContent = message;
             codeResult.className = `code-result ${type}`;
             
+            // Auto-hide success messages after 4 seconds
             if (type === 'success') {
                 setTimeout(() => {
                     codeResult.classList.add('hidden');
-                }, 3000);
+                }, 4000);
             }
         }
 
@@ -968,7 +1002,7 @@
             }
         }
 
-        // Prevent zoom on double tap
+        // Prevent zoom on double tap (keep this)
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
             const now = (new Date()).getTime();
@@ -978,102 +1012,22 @@
             lastTouchEnd = now;
         }, false);
 
-        // Prevent pull to refresh
-        document.body.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 1 && e.touches[0].clientY <= 40) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        document.body.addEventListener('touchmove', function(e) {
-            if (e.touches.length === 1 && e.touches[0].clientY <= 40) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        // Add vibration feedback for mobile
-        function vibrate(duration = 50) {
-            if ('vibrate' in navigator) {
-                navigator.vibrate(duration);
-            }
-        }
-
-        // Enhanced cell click with haptic feedback
-        const originalHandleCellClick = handleCellClick;
-        handleCellClick = function(event) {
-            vibrate();
-            return originalHandleCellClick.call(this, event);
-        };
-
-        // Enhanced difficulty change with haptic feedback
-        const originalHandleDifficultyChange = handleDifficultyChange;
-        handleDifficultyChange = function(event) {
-            vibrate(30);
-            return originalHandleDifficultyChange.call(this, event);
-        };
-
-        // Enhanced restart with haptic feedback
-        const originalRestartGame = restartGame;
-        restartGame = function(event) {
-            vibrate(100);
-            return originalRestartGame.call(this, event);
-        };
-
-        // Service Worker for offline support (optional)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                // Register service worker if available
-                console.log('App ready for offline use');
-            });
-        }
-
         // Handle orientation changes
         window.addEventListener('orientationchange', function() {
             setTimeout(function() {
-                // Recalculate sizes after orientation change
                 window.scrollTo(0, 0);
             }, 100);
         });
 
-        // Improved touch handling for better responsiveness
-        function addTouchSupport(element, callback) {
-            let touchStartTime;
-            let touchStartPos;
-            
-            element.addEventListener('touchstart', function(e) {
-                touchStartTime = Date.now();
-                touchStartPos = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY
-                };
-            }, { passive: true });
-            
-            element.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                
-                const touchEndTime = Date.now();
-                const touchDuration = touchEndTime - touchStartTime;
-                
-                // Only trigger if touch was quick (not a long press)
-                if (touchDuration < 500) {
-                    callback.call(this, e);
-                }
-            });
-        }
-
-        // Apply improved touch support to all interactive elements
-        cells.forEach(cell => {
-            addTouchSupport(cell, handleCellClick);
+        // Simple debug logging
+        window.addEventListener('error', function(e) {
+            console.log('Error:', e.message);
         });
 
-        difficultyButtons.forEach(btn => {
-            addTouchSupport(btn, handleDifficultyChange);
-        });
-
-        addTouchSupport(restartBtn, restartGame);
-        addTouchSupport(settingsBtn, openSettings);
-        addTouchSupport(closeSettingsBtn, closeSettings);
-        addTouchSupport(checkCodeBtn, checkCode);
+        console.log('Mobile Tic-Tac-Toe loaded successfully!');
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
