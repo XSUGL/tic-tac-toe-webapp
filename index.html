@@ -3,1068 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tic-Tac-Toe</title>
-    <style>
-        /* Global Styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #333;
-            padding: 10px;
-            overflow-x: hidden;
-        }
-
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-        }
-
-        /* Header Styles */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            color: #4a5568;
-            font-size: clamp(1.8rem, 5vw, 2.5rem);
-            font-weight: bold;
-        }
-
-        .settings-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            touch-action: manipulation;
-            min-height: 44px;
-            min-width: 44px;
-        }
-
-        .settings-btn:hover, .settings-btn:active {
-            background: #5a67d8;
-            transform: scale(0.95);
-        }
-
-        /* Game Board Styles */
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin: 20px auto;
-            max-width: 280px;
-            width: 100%;
-        }
-
-        .cell {
-            aspect-ratio: 1;
-            background: #f7fafc;
-            border: 3px solid #e2e8f0;
-            border-radius: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: clamp(1.5rem, 8vw, 2rem);
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            touch-action: manipulation;
-            min-height: 70px;
-        }
-
-        .cell:hover, .cell:active {
-            background: #edf2f7;
-            border-color: #cbd5e0;
-            transform: scale(0.95);
-        }
-
-        .cell.x {
-            color: #e53e3e;
-        }
-
-        .cell.o {
-            color: #3182ce;
-        }
-
-        .cell.winning {
-            background: #68d391 !important;
-            color: white;
-            animation: pulse 0.5s ease-in-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        /* Controls */
-        .controls {
-            margin: 20px 0;
-        }
-
-        .difficulty-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .difficulty-btn {
-            padding: 12px 18px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: 500;
-            touch-action: manipulation;
-            min-height: 44px;
-            font-size: 14px;
-        }
-
-        .difficulty-btn:hover, .difficulty-btn:active {
-            border-color: #667eea;
-            color: #667eea;
-            transform: scale(0.95);
-        }
-
-        .difficulty-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .restart-btn {
-            background: #48bb78;
-            color: white;
-            border: none;
-            padding: 14px 32px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            touch-action: manipulation;
-            min-height: 44px;
-        }
-
-        .restart-btn:hover, .restart-btn:active {
-            background: #38a169;
-            transform: scale(0.95);
-        }
-
-        /* Score Display */
-        .score-display {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            padding: 16px;
-            background: #f7fafc;
-            border-radius: 15px;
-        }
-
-        .score-item {
-            text-align: center;
-            flex: 1;
-        }
-
-        .score-label {
-            display: block;
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 5px;
-        }
-
-        .score-value {
-            display: block;
-            font-size: clamp(18px, 6vw, 24px);
-            font-weight: bold;
-            color: #2d3748;
-        }
-
-        /* Game Status */
-        .game-status {
-            margin-top: 15px;
-            padding: 12px;
-            background: #e6fffa;
-            border: 2px solid #81e6d9;
-            border-radius: 10px;
-            font-weight: 500;
-            color: #234e52;
-            font-size: 14px;
-        }
-
-        /* Settings Modal */
-        .settings-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .settings-modal.show {
-            display: flex;
-        }
-
-        .settings-content {
-            background: white;
-            padding: 25px;
-            border-radius: 20px;
-            max-width: 400px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .settings-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-
-        .settings-title {
-            color: #4a5568;
-            font-size: 1.8rem;
-            font-weight: bold;
-        }
-
-        .close-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            touch-action: manipulation;
-            min-height: 40px;
-            min-width: 40px;
-        }
-
-        .close-btn:hover, .close-btn:active {
-            background: #5a67d8;
-            transform: scale(0.95);
-        }
-
-        .setting-group {
-            margin-bottom: 25px;
-            text-align: left;
-        }
-
-        .setting-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #4a5568;
-            font-size: 16px;
-        }
-
-        .language-select {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 16px;
-            background: white;
-            cursor: pointer;
-            touch-action: manipulation;
-            min-height: 50px;
-        }
-
-        .language-select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .code-input-group {
-            display: flex;
-            gap: 10px;
-            flex-direction: column;
-        }
-
-        .code-input {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 16px;
-            min-height: 50px;
-        }
-
-        .code-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .check-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 14px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s ease;
-            touch-action: manipulation;
-            min-height: 50px;
-        }
-
-        .check-btn:hover, .check-btn:active {
-            background: #5a67d8;
-            transform: scale(0.95);
-        }
-
-        /* Code Result Styles */
-        .code-result {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: 500;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease;
-            font-size: 16px;
-            text-align: center;
-            word-break: break-word;
-        }
-
-        .code-result.success {
-            background: #c6f6d5;
-            border: 2px solid #68d391;
-            color: #22543d;
-        }
-
-        .code-result.error {
-            background: #fed7d7;
-            border: 2px solid #fc8181;
-            color: #742a2a;
-        }
-
-        .code-result.special {
-            background: #e6fffa;
-            border: 2px solid #81e6d9;
-            color: #234e52;
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .code-result.hidden {
-            display: none !important;
-            opacity: 0;
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-            .container {
-                padding: 15px;
-            }
-            
-            .difficulty-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .difficulty-btn {
-                width: 140px;
-            }
-            
-            .score-display {
-                padding: 12px;
-            }
-            
-            .code-input-group {
-                gap: 15px;
-            }
-        }
-
-        /* Loading animation */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .bot-thinking {
-            animation: thinking 1s ease-in-out infinite;
-        }
-
-        @keyframes thinking {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-    </style>
+    <title>Advanced Tic-Tac-Toe</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
-            <h1>Tic-Tac-Toe</h1>
-            <button class="settings-btn" id="settingsBtn">
-                ⚙️
-            </button>
+            <h1>Tic-Tac-Toe Pro</h1>
+            <div class="header-buttons">
+                <button class="header-btn" id="accountBtn" title="Account">👤</button>
+                <button class="header-btn" id="settingsBtn" title="Settings">⚙️</button>
+            </div>
         </header>
 
-        <main>
-            <!-- Game Board -->
-            <div class="game-board" id="gameBoard">
-                <div class="cell" data-index="0"></div>
-                <div class="cell" data-index="1"></div>
-                <div class="cell" data-index="2"></div>
-                <div class="cell" data-index="3"></div>
-                <div class="cell" data-index="4"></div>
-                <div class="cell" data-index="5"></div>
-                <div class="cell" data-index="6"></div>
-                <div class="cell" data-index="7"></div>
-                <div class="cell" data-index="8"></div>
-            </div>
+        <!-- User Info -->
+        <div class="user-info guest" id="userInfo">
+            <span id="userInfoText">Guest Mode</span>
+        </div>
 
-            <!-- Game Controls -->
-            <div class="controls">
-                <div class="difficulty-buttons">
-                    <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
-                    <button class="difficulty-btn" data-difficulty="medium">Medium</button>
-                    <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+        <!-- Game Mode Selection -->
+        <div class="game-mode-selection" id="gameModeSelection">
+            <div class="mode-title" id="modeTitle">Choose Game Mode</div>
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="bot" id="botModeBtn">🤖 vs Bot</button>
+                <button class="mode-btn" data-mode="player" id="playerModeBtn">👥 2 Players</button>
+            </div>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div class="difficulty-section" id="difficultySection">
+            <div class="difficulty-buttons">
+                <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+                <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+                <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+            </div>
+        </div>
+
+        <!-- Start Game Section -->
+        <div class="start-game-section" id="startGameSection">
+            <button class="start-game-btn" id="startGameBtn">🎮 Start Game</button>
+        </div>
+
+        <!-- Game Info -->
+        <div class="game-info hidden" id="gameInfo">
+            <span id="gameInfoText"></span>
+        </div>
+
+        <!-- Turn Indicator -->
+        <div class="turn-indicator" id="turnIndicator" style="display: none;">
+            <span id="turnText">Player X Turn</span>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board" id="gameBoard">
+            <div class="cell disabled" data-index="0"></div>
+            <div class="cell disabled" data-index="1"></div>
+            <div class="cell disabled" data-index="2"></div>
+            <div class="cell disabled" data-index="3"></div>
+            <div class="cell disabled" data-index="4"></div>
+            <div class="cell disabled" data-index="5"></div>
+            <div class="cell disabled" data-index="6"></div>
+            <div class="cell disabled" data-index="7"></div>
+            <div class="cell disabled" data-index="8"></div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="control-buttons" id="controlButtons" style="display: none;">
+            <button class="control-btn restart" id="restartBtn">🔄 Restart</button>
+            <button class="control-btn" id="newGameBtn">🎯 New Game</button>
+        </div>
+
+        <!-- Score Display -->
+        <div class="score-display">
+            <div class="score-item">
+                <span class="score-label" id="score1Label">Player 1</span>
+                <span class="score-value" id="score1Value">0</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label" id="score2Label">Bot</span>
+                <span class="score-value" id="score2Value">0</span>
+            </div>
+            <div class="score-item">
+                <span class="score-label" id="drawLabel">Draw</span>
+                <span class="score-value" id="drawScore">0</span>
+            </div>
+        </div>
+
+        <!-- Account Modal -->
+        <div class="modal" id="accountModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="accountModalTitle">Account</h2>
+                    <button class="close-btn" id="closeAccountBtn">✕</button>
                 </div>
-                
-                <button class="restart-btn" id="restartBtn">Restart</button>
-            </div>
-
-            <!-- Score Display -->
-            <div class="score-display">
-                <div class="score-item">
-                    <span class="score-label" id="playerLabel">Player</span>
-                    <span class="score-value" id="playerScore">0</span>
+                <div id="authForm">
+                    <div class="form-group">
+                        <label for="emailInput" id="emailLabel">Email:</label>
+                        <input type="email" id="emailInput" class="form-input" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="nicknameInput" id="nicknameLabel">Nickname:</label>
+                        <input type="text" id="nicknameInput" class="form-input" placeholder="Enter your nickname">
+                    </div>
+                    <div class="form-group">
+                        <label for="passwordInput" id="passwordLabel">Password:</label>
+                        <input type="password" id="passwordInput" class="form-input" placeholder="Enter your password">
+                    </div>
+                    <button class="form-btn" id="loginBtn">Login / Register</button>
+                    <button class="form-btn secondary" id="guestBtn">Continue as Guest</button>
                 </div>
-                <div class="score-item">
-                    <span class="score-label" id="botLabel">Bot</span>
-                    <span class="score-value" id="botScore">0</span>
-                </div>
-                <div class="score-item">
-                    <span class="score-label" id="drawLabel">Draw</span>
-                    <span class="score-value" id="drawScore">0</span>
-                </div>
-            </div>
-
-            <!-- Game Status -->
-            <div class="game-status" id="gameStatus">Your turn!</div>
-        </main>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="settings-modal" id="settingsModal">
-        <div class="settings-content">
-            <div class="settings-header">
-                <h2 class="settings-title" id="settingsTitle">Settings</h2>
-                <button class="close-btn" id="closeSettingsBtn">✕</button>
-            </div>
-            
-            <div class="setting-group">
-                <label for="languageSelect" id="languageLabel">Language:</label>
-                <select id="languageSelect" class="language-select">
-                    <option value="en">English</option>
-                    <option value="ru">Русский</option>
-                    <option value="it">Italiano</option>
-                </select>
-            </div>
-
-            <div class="setting-group">
-                <label for="codeInput" id="codeLabel">Enter Code:</label>
-                <div class="code-input-group">
-                    <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
-                    <button id="checkCodeBtn" class="check-btn">Check</button>
+                <div id="accountInfo" style="display: none;">
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <div id="userEmail" style="padding: 12px; background: #f7fafc; border-radius: 8px;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nickname:</label>
+                        <div id="userNickname" style="padding: 12px; background: #f7fafc; border-radius: 8px;"></div>
+                    </div>
+                    <button class="form-btn" id="logoutBtn" style="background: #e53e3e;">Logout</button>
                 </div>
             </div>
+        </div>
 
-            <div class="code-result hidden" id="codeResult"></div>
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="settingsTitle">Settings</h2>
+                    <button class="close-btn" id="closeSettingsBtn">✕</button>
+                </div>
+                <div class="setting-group">
+                    <label for="languageSelect" id="languageLabel">Language:</label>
+                    <select id="languageSelect" class="language-select">
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                        <option value="it">Italiano</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="firstMoveSelect" id="firstMoveLabel">Who goes first:</label>
+                    <select id="firstMoveSelect" class="setting-select">
+                        <option value="player">Player Always First</option>
+                        <option value="alternating">Alternating</option>
+                        <option value="bot">Bot Always First</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="codeInput" id="codeLabel">Enter Code:</label>
+                    <div class="code-input-group">
+                        <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
+                        <button id="checkCodeBtn" class="form-btn">Check</button>
+                    </div>
+                </div>
+                <div class="code-result hidden" id="codeResult"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div class="modal" id="gameOverModal">
+            <div class="modal-content game-over-content">
+                <h2 class="game-over-title" id="gameOverTitle">Game Over!</h2>
+                <div class="game-over-message" id="gameOverMessage">You win!</div>
+                <button class="form-btn" id="playAgainBtn">Play Again</button>
+                <button class="form-btn secondary" id="newGameFromOverBtn">New Game</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Game state
-        let board = ['', '', '', '', '', '', '', '', ''];
-        let currentPlayer = 'X';
-        let gameActive = true;
-        let difficulty = 'easy';
-        let scores = {
-            player: 0,
-            bot: 0,
-            draw: 0
-        };
-
-        // Language translations
-        const translations = {
-            en: {
-                restart: 'Restart',
-                player: 'Player',
-                bot: 'Bot',
-                draw: 'Draw',
-                yourTurn: 'Your turn!',
-                botTurn: 'Bot is thinking...',
-                youWin: 'You win! 🎉',
-                botWins: 'Bot wins! 🤖',
-                gameDraw: "It's a draw! 🤝",
-                settingsTitle: 'Settings',
-                languageLabel: 'Language:',
-                codeLabel: 'Enter Code:',
-                codePlaceholder: 'Enter special code...',
-                checkButton: 'Check',
-                languageSaved: 'Language saved!',
-                enterCode: 'Please enter a code',
-                invalidCode: 'Invalid code'
-            },
-            ru: {
-                restart: 'Перезапуск',
-                player: 'Игрок',
-                bot: 'Бот',
-                draw: 'Ничья',
-                yourTurn: 'Ваш ход!',
-                botTurn: 'Бот думает...',
-                youWin: 'Вы выиграли! 🎉',
-                botWins: 'Бот выиграл! 🤖',
-                gameDraw: 'Ничья! 🤝',
-                settingsTitle: 'Настройки',
-                languageLabel: 'Язык:',
-                codeLabel: 'Введите код:',
-                codePlaceholder: 'Введите специальный код...',
-                checkButton: 'Проверить',
-                languageSaved: 'Язык сохранен!',
-                enterCode: 'Пожалуйста, введите код',
-                invalidCode: 'Неверный код'
-            },
-            it: {
-                restart: 'Ricomincia',
-                player: 'Giocatore',
-                bot: 'Bot',
-                draw: 'Pareggio',
-                yourTurn: 'Il tuo turno!',
-                botTurn: 'Il bot sta pensando...',
-                youWin: 'Hai vinto! 🎉',
-                botWins: 'Il bot ha vinto! 🤖',
-                gameDraw: 'È un pareggio! 🤝',
-                settingsTitle: 'Impostazioni',
-                languageLabel: 'Lingua:',
-                codeLabel: 'Inserisci codice:',
-                codePlaceholder: 'Inserisci codice speciale...',
-                checkButton: 'Verifica',
-                languageSaved: 'Lingua salvata!',
-                enterCode: 'Per favore inserisci un codice',
-                invalidCode: 'Codice non valido'
-            }
-        };
-
-        // Winning combinations
-        const winPatterns = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-            [0, 4, 8], [2, 4, 6] // Diagonals
-        ];
-
-        // DOM elements
-        const cells = document.querySelectorAll('.cell');
-        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
-        const restartBtn = document.getElementById('restartBtn');
-        const settingsBtn = document.getElementById('settingsBtn');
-        const gameStatus = document.getElementById('gameStatus');
-        const playerScoreEl = document.getElementById('playerScore');
-        const botScoreEl = document.getElementById('botScore');
-        const drawScoreEl = document.getElementById('drawScore');
-        const playerLabelEl = document.getElementById('playerLabel');
-        const botLabelEl = document.getElementById('botLabel');
-        const drawLabelEl = document.getElementById('drawLabel');
-        
-        // Settings elements
-        const settingsModal = document.getElementById('settingsModal');
-        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-        const languageSelect = document.getElementById('languageSelect');
-        const codeInput = document.getElementById('codeInput');
-        const checkCodeBtn = document.getElementById('checkCodeBtn');
-        const codeResult = document.getElementById('codeResult');
-
-        // Initialize game
-        document.addEventListener('DOMContentLoaded', function() {
-            loadScores();
-            loadLanguage();
-            initializeGame();
-            initializeSettings();
-        });
-
-        function initializeGame() {
-            // Simplified event listeners - only click events
-            cells.forEach(cell => {
-                cell.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleCellClick(e);
-                });
-            });
-
-            difficultyButtons.forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDifficultyChange(e);
-                });
-            });
-
-            restartBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                restartGame();
-            });
-            
-            settingsBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                openSettings();
-            });
-
-            // Set initial status
-            updateGameStatus();
-            updateScoreDisplay();
-        }
-
-        function initializeSettings() {
-            // Load saved language
-            const savedLanguage = localStorage.getItem('gameLanguage') || 'en';
-            languageSelect.value = savedLanguage;
-            updateSettingsLanguage(savedLanguage);
-
-            // Settings event listeners - ONLY click events for mobile compatibility
-            closeSettingsBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                closeSettings();
-            });
-            
-            settingsModal.addEventListener('click', function(e) {
-                if (e.target === settingsModal) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeSettings();
-                }
-            });
-
-            languageSelect.addEventListener('change', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                handleLanguageChange();
-            });
-            
-            // Simple click handler for check button
-            checkCodeBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                setTimeout(checkCode, 100); // Small delay to prevent reload
-            });
-            
-            // Enter key support
-            codeInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setTimeout(checkCode, 100); // Small delay to prevent reload
-                }
-            });
-
-            // Clear result when user starts typing new code
-            codeInput.addEventListener('focus', function() {
-                // Clear any existing timeouts
-                if (window.codeResultTimeout) {
-                    clearTimeout(window.codeResultTimeout);
-                }
-                // Don't hide result immediately, let user see it while typing
-            });
-
-            codeInput.addEventListener('input', function() {
-                // Only hide if user starts typing something new and there's an old result
-                if (this.value.length === 1 && !codeResult.classList.contains('hidden')) {
-                    setTimeout(() => {
-                        codeResult.classList.add('hidden');
-                        codeResult.style.display = 'none';
-                    }, 1000); // Give user time to see previous result
-                }
-            });
-        }
-
-        function handleCellClick(event) {
-            event.preventDefault();
-            
-            const index = event.target.dataset.index;
-            
-            if (board[index] !== '' || !gameActive || currentPlayer !== 'X') {
-                return;
-            }
-
-            makeMove(index, 'X');
-            
-            if (gameActive) {
-                currentPlayer = 'O';
-                updateGameStatus();
-                gameStatus.classList.add('bot-thinking');
-                setTimeout(() => {
-                    makeBotMove();
-                    gameStatus.classList.remove('bot-thinking');
-                }, 800);
-            }
-        }
-
-        function makeMove(index, player) {
-            board[index] = player;
-            const cell = cells[index];
-            cell.textContent = player;
-            cell.classList.add(player.toLowerCase());
-
-            if (checkWinner()) {
-                gameActive = false;
-                highlightWinningCells();
-                updateScore(player === 'X' ? 'player' : 'bot');
-            } else if (board.every(cell => cell !== '')) {
-                gameActive = false;
-                updateScore('draw');
-            }
-            
-            updateGameStatus();
-        }
-
-        function makeBotMove() {
-            if (!gameActive) return;
-
-            let moveIndex;
-            
-            switch(difficulty) {
-                case 'easy':
-                    moveIndex = getRandomMove();
-                    break;
-                case 'medium':
-                    moveIndex = getMediumMove();
-                    break;
-                case 'hard':
-                    moveIndex = getHardMove();
-                    break;
-            }
-
-            if (moveIndex !== -1) {
-                makeMove(moveIndex, 'O');
-                currentPlayer = 'X';
-            }
-        }
-
-        function getRandomMove() {
-            const availableMoves = board
-                .map((cell, index) => cell === '' ? index : null)
-                .filter(val => val !== null);
-            
-            return availableMoves.length > 0 
-                ? availableMoves[Math.floor(Math.random() * availableMoves.length)]
-                : -1;
-        }
-
-        function getMediumMove() {
-            // First, try to win
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'O';
-                    if (checkWinner() === 'O') {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
-                }
-            }
-
-            // Then, try to block player's win
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'X';
-                    if (checkWinner() === 'X') {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
-                }
-            }
-
-            // Take center if available
-            if (board[4] === '') {
-                return 4;
-            }
-
-            // Take corners
-            const corners = [0, 2, 6, 8];
-            const availableCorners = corners.filter(i => board[i] === '');
-            if (availableCorners.length > 0) {
-                return availableCorners[Math.floor(Math.random() * availableCorners.length)];
-            }
-
-            // Otherwise, make random move
-            return getRandomMove();
-        }
-
-        function getHardMove() {
-            // Advanced strategy with better corner and center play
-            return getMediumMove();
-        }
-
-        function checkWinner() {
-            for (let pattern of winPatterns) {
-                const [a, b, c] = pattern;
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-                    return board[a];
-                }
-            }
-            return null;
-        }
-
-        function highlightWinningCells() {
-            for (let pattern of winPatterns) {
-                const [a, b, c] = pattern;
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-                    cells[a].classList.add('winning');
-                    cells[b].classList.add('winning');
-                    cells[c].classList.add('winning');
-                    break;
-                }
-            }
-        }
-
-        function handleDifficultyChange(event) {
-            event.preventDefault();
-            difficultyButtons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            difficulty = event.target.dataset.difficulty;
-        }
-
-        function restartGame(event) {
-            if (event) event.preventDefault();
-            
-            board = ['', '', '', '', '', '', '', '', ''];
-            currentPlayer = 'X';
-            gameActive = true;
-            
-            cells.forEach(cell => {
-                cell.textContent = '';
-                cell.classList.remove('x', 'o', 'winning');
-            });
-            
-            updateGameStatus();
-        }
-
-        function openSettings(event) {
-            if (event) event.preventDefault();
-            settingsModal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeSettings(event) {
-            if (event) event.preventDefault();
-            settingsModal.classList.remove('show');
-            document.body.style.overflow = 'auto';
-        }
-
-        function handleLanguageChange() {
-            const selectedLanguage = languageSelect.value;
-            localStorage.setItem('gameLanguage', selectedLanguage);
-            updateLanguage(selectedLanguage);
-            updateSettingsLanguage(selectedLanguage);
-            
-            const t = translations[selectedLanguage];
-            showCodeResult(t.languageSaved, 'success');
-        }
-
-        function checkCode() {
-            const code = codeInput.value.trim();
-            const currentLang = localStorage.getItem('gameLanguage') || 'en';
-            const t = translations[currentLang];
-            
-            console.log('Checking code:', code); // Debug log
-            
-            // Clear previous result first
-            codeResult.classList.add('hidden');
-            codeResult.style.display = 'none';
-            
-            if (code === '') {
-                setTimeout(() => showCodeResult(t.enterCode, 'error'), 100);
-                return;
-            }
-
-            // Check codes without any event handling
-            setTimeout(() => {
-                if (code === '42') {
-                    showCodeResult('Hello World', 'special');
-                } else if (code === 'love') {
-                    showCodeResult('Y + A = ❤️', 'special');
-                } else {
-                    showCodeResult(t.invalidCode, 'error');
-                }
-            }, 100);
-
-            // Clear input after showing result
-            setTimeout(() => {
-                codeInput.value = '';
-            }, 150);
-        }
-
-        function showCodeResult(message, type) {
-            console.log('Showing result:', message, type); // Debug log
-            
-            // Show the result container
-            codeResult.classList.remove('hidden');
-            codeResult.style.display = 'flex';
-            
-            // Set content and type
-            codeResult.textContent = message;
-            codeResult.className = `code-result ${type}`;
-            
-            // Clear any existing timeouts
-            if (window.codeResultTimeout) {
-                clearTimeout(window.codeResultTimeout);
-            }
-            
-            // Auto-hide only success messages after 5 seconds
-            if (type === 'success') {
-                window.codeResultTimeout = setTimeout(() => {
-                    codeResult.classList.add('hidden');
-                    codeResult.style.display = 'none';
-                }, 5000);
-            }
-            // Error and special messages stay visible until next action
-        }
-
-        function updateScore(winner) {
-            scores[winner]++;
-            saveScores();
-            updateScoreDisplay();
-        }
-
-        function updateScoreDisplay() {
-            playerScoreEl.textContent = scores.player;
-            botScoreEl.textContent = scores.bot;
-            drawScoreEl.textContent = scores.draw;
-        }
-
-        function updateGameStatus() {
-            const lang = localStorage.getItem('gameLanguage') || 'en';
-            const t = translations[lang];
-            
-            if (!gameActive) {
-                const winner = checkWinner();
-                if (winner === 'X') {
-                    gameStatus.textContent = t.youWin;
-                } else if (winner === 'O') {
-                    gameStatus.textContent = t.botWins;
-                } else {
-                    gameStatus.textContent = t.gameDraw;
-                }
-            } else {
-                if (currentPlayer === 'X') {
-                    gameStatus.textContent = t.yourTurn;
-                } else {
-                    gameStatus.textContent = t.botTurn;
-                }
-            }
-        }
-
-        function loadLanguage() {
-            const lang = localStorage.getItem('gameLanguage') || 'en';
-            updateLanguage(lang);
-        }
-
-        function updateLanguage(lang) {
-            const t = translations[lang];
-            
-            restartBtn.textContent = t.restart;
-            playerLabelEl.textContent = t.player;
-            botLabelEl.textContent = t.bot;
-            drawLabelEl.textContent = t.draw;
-            
-            updateGameStatus();
-        }
-
-        function updateSettingsLanguage(lang) {
-            const t = translations[lang];
-            
-            document.getElementById('settingsTitle').textContent = t.settingsTitle;
-            document.getElementById('languageLabel').textContent = t.languageLabel;
-            document.getElementById('codeLabel').textContent = t.codeLabel;
-            document.getElementById('codeInput').placeholder = t.codePlaceholder;
-            document.getElementById('checkCodeBtn').textContent = t.checkButton;
-        }
-
-        function saveScores() {
-            localStorage.setItem('ticTacToeScores', JSON.stringify(scores));
-        }
-
-        function loadScores() {
-            const savedScores = localStorage.getItem('ticTacToeScores');
-            if (savedScores) {
-                scores = JSON.parse(savedScores);
-            }
-        }
-
-        // Prevent zoom on double tap (keep this)
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function (event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-
-        // Handle orientation changes
-        window.addEventListener('orientationchange', function() {
-            setTimeout(function() {
-                window.scrollTo(0, 0);
-            }, 100);
-        });
-
-        // Simple debug logging
-        window.addEventListener('error', function(e) {
-            console.log('Error:', e.message);
-        });
-
-        console.log('Mobile Tic-Tac-Toe loaded successfully!');
-    </script>
-</body>
-</html>
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
