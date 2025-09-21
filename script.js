@@ -193,41 +193,76 @@ function checkDraw() {
     return board.every(cell => cell !== '');
 }
 
-function minimax(newBoard, player, depth = 0) {
-    const winCheck = checkWin('X');
-    if (winCheck.won) return { score: -10 + depth };
-    if (checkWin('O').won) return { score: 10 - depth };
-    if (checkDraw()) return { score: 0 };
+function minimax(newBoard, player, depth = 0, maxDepth = 9) {
+    console.log(`Minimax called: player=${player}, depth=${depth}, board=${newBoard}`);
+
+    // Ограничение глубины рекурсии
+    if (depth >= maxDepth) {
+        console.log('Max depth reached, returning draw score');
+        return { score: 0 };
+    }
+
+    // Проверка выигрыша для X и O
+    const xWin = checkWin('X');
+    const oWin = checkWin('O');
+    if (xWin.won) {
+        console.log('X wins detected');
+        return { score: -100 + depth }; // Увеличенный штраф для X
+    }
+    if (oWin.won) {
+        console.log('O wins detected');
+        return { score: 100 - depth }; // Увеличенная награда для O
+    }
+    if (checkDraw()) {
+        console.log('Draw detected');
+        return { score: 0 };
+    }
 
     const scores = [];
     const moves = [];
     const opponent = player === 'O' ? 'X' : 'O';
 
+    // Собираем пустые клетки
     const emptyCells = newBoard.reduce((acc, cell, idx) => {
         if (cell === '') acc.push(idx);
         return acc;
     }, []);
 
+    if (emptyCells.length === 0) {
+        console.log('No empty cells, returning draw score');
+        return { score: 0 };
+    }
+
+    console.log(`Empty cells: ${emptyCells}`);
+
+    // Перебор ходов
     for (let i = 0; i < emptyCells.length; i++) {
         const index = emptyCells[i];
         newBoard[index] = player;
-        const result = minimax(newBoard, opponent, depth + 1);
+        console.log(`Trying move: index=${index}, player=${player}, board=${newBoard}`);
+        const result = minimax(newBoard, opponent, depth + 1, maxDepth);
         scores.push(result.score);
         moves.push(index);
-        newBoard[index] = '';
+        newBoard[index] = ''; // Откатываем ход
+        console.log(`Undo move: index=${index}, board=${newBoard}`);
     }
 
     if (player === 'O') {
         const maxScoreIndex = scores.indexOf(Math.max(...scores));
+        console.log(`Best move for O: index=${moves[maxScoreIndex]}, score=${scores[maxScoreIndex]}`);
         return { score: scores[maxScoreIndex], move: moves[maxScoreIndex] };
     } else {
         const minScoreIndex = scores.indexOf(Math.min(...scores));
-        return { score: scores[minScoreIndex], move: moves[maxScoreIndex] };
+        console.log(`Best move for X: index=${moves[minScoreIndex]}, score=${scores[minScoreIndex]}`);
+        return { score: scores[minScoreIndex], move: moves[minScoreIndex] };
     }
 }
 
 function botMove() {
-    if (gameMode !== 'bot' || !gameActive) return;
+    if (gameMode !== 'bot' || !gameActive) {
+        console.log('Bot move skipped: gameMode or gameActive invalid');
+        return;
+    }
 
     let move;
     if (difficulty === 'easy') {
@@ -236,17 +271,43 @@ function botMove() {
             return acc;
         }, []);
         move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        console.log(`Easy bot move: ${move}`);
     } else if (difficulty === 'medium') {
+        // Проверяем выигрышный ход для O
         for (let combo of winningCombinations) {
             const [a, b, c] = combo;
-            if (board[a] === 'O' && board[b] === 'O' && board[c] === '') move = c;
-            else if (board[a] === 'O' && board[c] === 'O' && board[b] === '') move = b;
-            else if (board[b] === 'O' && board[c] === 'O' && board[a] === '') move = a;
-            else if (board[a] === 'X' && board[b] === 'X' && board[c] === '') move = c;
-            else if (board[a] === 'X' && board[c] === 'X' && board[b] === '') move = b;
-            else if (board[b] === 'X' && board[c] === 'X' && board[a] === '') move = a;
-            if (move !== undefined) break;
+            if (board[a] === 'O' && board[b] === 'O' && board[c] === '') {
+                move = c;
+                break;
+            }
+            if (board[a] === 'O' && board[c] === 'O' && board[b] === '') {
+                move = b;
+                break;
+            }
+            if (board[b] === 'O' && board[c] === 'O' && board[a] === '') {
+                move = a;
+                break;
+            }
         }
+        // Проверяем блокировку X
+        if (move === undefined) {
+            for (let combo of winningCombinations) {
+                const [a, b, c] = combo;
+                if (board[a] === 'X' && board[b] === 'X' && board[c] === '') {
+                    move = c;
+                    break;
+                }
+                if (board[a] === 'X' && board[c] === 'X' && board[b] === '') {
+                    move = b;
+                    break;
+                }
+                if (board[b] === 'X' && board[c] === 'X' && board[a] === '') {
+                    move = a;
+                    break;
+                }
+            }
+        }
+        // Если нет выигрыша или блокировки, ходим случайно
         if (move === undefined) {
             const emptyCells = board.reduce((acc, cell, idx) => {
                 if (cell === '') acc.push(idx);
@@ -254,14 +315,64 @@ function botMove() {
             }, []);
             move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         }
+        console.log(`Medium bot move: ${move}`);
     } else if (difficulty === 'hard') {
-        const result = minimax([...board], 'O');
-        move = result.move;
+        console.log('Starting hard bot move calculation');
+        // Проверяем немедленный выигрыш для O
+        for (let combo of winningCombinations) {
+            const [a, b, c] = combo;
+            if (board[a] === 'O' && board[b] === 'O' && board[c] === '') {
+                move = c;
+                console.log(`Hard bot immediate win: ${move}`);
+                break;
+            }
+            if (board[a] === 'O' && board[c] === 'O' && board[b] === '') {
+                move = b;
+                console.log(`Hard bot immediate win: ${move}`);
+                break;
+            }
+            if (board[b] === 'O' && board[c] === 'O' && board[a] === '') {
+                move = a;
+                console.log(`Hard bot immediate win: ${move}`);
+                break;
+            }
+        }
+        // Проверяем немедленную блокировку X
+        if (move === undefined) {
+            for (let combo of winningCombinations) {
+                const [a, b, c] = combo;
+                if (board[a] === 'X' && board[b] === 'X' && board[c] === '') {
+                    move = c;
+                    console.log(`Hard bot immediate block: ${move}`);
+                    break;
+                }
+                if (board[a] === 'X' && board[c] === 'X' && board[b] === '') {
+                    move = b;
+                    console.log(`Hard bot immediate block: ${move}`);
+                    break;
+                }
+                if (board[b] === 'X' && board[c] === 'X' && board[a] === '') {
+                    move = a;
+                    console.log(`Hard bot immediate block: ${move}`);
+                    break;
+                }
+            }
+        }
+        // Если нет немедленных ходов, используем minimax
+        if (move === undefined) {
+            const result = minimax([...board], 'O', 0, 9);
+            move = result.move;
+            console.log(`Hard bot minimax move: ${move}, score: ${result.score}`);
+        }
     }
 
     if (move !== undefined) {
         board[move] = currentPlayer;
         const cell = document.querySelector(`.cell[data-index="${move}"]`);
+        if (!cell) {
+            console.error(`Cell with index ${move} not found`);
+            return;
+        }
         cell.textContent = currentPlayer;
         cell.classList.add(currentPlayer.toLowerCase(), 'disabled');
 
@@ -277,9 +388,12 @@ function botMove() {
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
             updateTurnIndicator();
             if (gameMode === 'bot' && currentPlayer === 'O') {
+                console.log('Scheduling next bot move');
                 setTimeout(botMove, 500);
             }
         }
+    } else {
+        console.error('Bot failed to find a valid move');
     }
 }
 
@@ -580,6 +694,7 @@ document.querySelectorAll('.cell').forEach(cell => {
                 currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
                 updateTurnIndicator();
                 if (gameMode === 'bot' && currentPlayer === 'O') {
+                    console.log('Scheduling bot move after player');
                     setTimeout(botMove, 500);
                 }
             }
@@ -603,6 +718,7 @@ document.getElementById('startGameBtn').addEventListener('click', () => {
     document.getElementById('turnIndicator').style.display = 'block';
     updateTurnIndicator();
     if (gameMode === 'bot' && currentPlayer === 'O') {
+        console.log('Starting game with bot first move');
         setTimeout(botMove, 500);
     }
 });
@@ -618,6 +734,7 @@ document.getElementById('restartBtn').addEventListener('click', () => {
     document.getElementById('gameOverModal').classList.remove('show');
     updateTurnIndicator();
     if (gameMode === 'bot' && currentPlayer === 'O') {
+        console.log('Restarting game with bot first move');
         setTimeout(botMove, 500);
     }
 });
