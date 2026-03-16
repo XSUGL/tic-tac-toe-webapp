@@ -56,7 +56,7 @@ const resultModal = id('resultModal');
 
 // ── HUB ────────────────────────────────────────
 const BOARD_GAMES = ['ttt','ttt5','c4'];
-const ARCADE_GAMES = ['bubbles','snake','breakout','flappy'];
+const ARCADE_GAMES = ['bubbles','snake','breakout','flappy','ballbattle'];
 
 document.querySelectorAll('.game-card').forEach(card => {
   card.addEventListener('click', () => {
@@ -400,11 +400,25 @@ let arcadeHiScore = {};
 function openArcade(g) {
   stopArcade();
   currentGame = g;
-  id('arcadeName').textContent = {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD'}[g];
+  id('arcadeName').textContent = {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD',ballbattle:'BALL BATTLE'}[g];
   hide(hub); show(arcadeScreen);
   setupCanvas();
   buildControls(g);
-  showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD'}[g], 'TAP TO START');
+  if (g === 'ballbattle') {
+    showArcadeOverlay('⚔️', 'BALL BATTLE', 'PHYSICS ARENA · 1v1 OR VS BOT', '🤖 VS BOT');
+    id('overlayBtn').textContent = '🤖 VS BOT';
+    id('overlayBtn').dataset.bbmode = 'bot';
+    // Add 2P button
+    const existing = document.getElementById('bb2pBtn');
+    if (existing) existing.remove();
+    const btn2p = document.createElement('button');
+    btn2p.id = 'bb2pBtn'; btn2p.className = 'ctrl-btn'; btn2p.textContent = '👥 2 PLAYERS';
+    btn2p.style.cssText = 'width:100%;margin-top:8px;border-color:var(--o-col);color:var(--o-col)';
+    id('arcadeOverlay').appendChild(btn2p);
+    btn2p.addEventListener('click', () => { hideArcadeOverlay(); arcadeScore = 0; updateArcadeScore(); startBallBattle('2p'); });
+  } else {
+    showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD'}[g], {bubbles:'TAP TO SHOOT',snake:'TAP TO START',breakout:'MOVE PADDLE',flappy:'TAP TO FLY'}[g]);
+  }
 }
 
 function setupCanvas(){
@@ -435,6 +449,7 @@ id('overlayBtn').addEventListener('click', ()=>{
   if(currentGame==='snake')   startSnake();
   if(currentGame==='breakout')startBreakout();
   if(currentGame==='flappy')  startFlappy();
+  if(currentGame==='ballbattle') startBallBattle('bot');
 });
 
 function stopArcade(){
@@ -958,29 +973,45 @@ function buildControls(game){
   if(game==='snake'){
     ctrl.innerHTML=`
       <div style="display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(2,60px);gap:8px">
-        <div></div>
-        <button class="arc-btn" data-dir="up">▲</button>
-        <div></div>
+        <div></div><button class="arc-btn" data-dir="up">▲</button><div></div>
         <button class="arc-btn" data-dir="left">◀</button>
         <button class="arc-btn" data-dir="down">▼</button>
         <button class="arc-btn" data-dir="right">▶</button>
       </div>`;
     ctrl.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{
-      const map={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
-      document.dispatchEvent(new KeyboardEvent('keydown',{key:{up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'}[b.dataset.dir]}));
+      const k={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'}[b.dataset.dir];
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:k}));
     }));
   } else if(game==='breakout'){
     ctrl.innerHTML=`<button class="arc-btn wide" data-dir="left">◀ LEFT</button><button class="arc-btn wide" data-dir="right">RIGHT ▶</button>`;
     ctrl.querySelectorAll('[data-dir]').forEach(b=>{
       let iv;
-      b.addEventListener('touchstart',()=>{ iv=setInterval(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:b.dataset.dir==='left'?'ArrowLeft':'ArrowRight'})),50); },{passive:true});
+      const k=b.dataset.dir==='left'?'ArrowLeft':'ArrowRight';
+      b.addEventListener('touchstart',()=>{ iv=setInterval(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k})),50); },{passive:true});
       b.addEventListener('touchend',()=>clearInterval(iv));
-      b.addEventListener('mousedown',()=>{ iv=setInterval(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:b.dataset.dir==='left'?'ArrowLeft':'ArrowRight'})),50); });
+      b.addEventListener('mousedown',()=>{ iv=setInterval(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k})),50); });
       b.addEventListener('mouseup',()=>clearInterval(iv));
     });
   } else if(game==='flappy'){
     ctrl.innerHTML=`<button class="arc-btn wide" id="flapBtn">🐦 TAP / FLAP</button>`;
     id('flapBtn').addEventListener('click',()=>canvas.dispatchEvent(new MouseEvent('click')));
+  } else if(game==='ballbattle'){
+    ctrl.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(2,60px);gap:8px">
+        <div></div><button class="arc-btn" id="bb-up">▲</button><div></div>
+        <button class="arc-btn" id="bb-left">◀</button>
+        <button class="arc-btn" id="bb-down">⚡</button>
+        <button class="arc-btn" id="bb-right">▶</button>
+      </div>
+      <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:1px;color:var(--sub);text-align:center;padding:6px 0">▲ JUMP  ⚡ DASH  (ARROWS)</div>`;
+    const bbMap={'bb-up':'ArrowUp','bb-left':'ArrowLeft','bb-right':'ArrowRight','bb-down':'ArrowDown'};
+    Object.entries(bbMap).forEach(([bid,key])=>{
+      const btn=id(bid);
+      btn.addEventListener('touchstart',e=>{e.preventDefault();document.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true}));},{passive:false});
+      btn.addEventListener('touchend',  e=>{e.preventDefault();document.dispatchEvent(new KeyboardEvent('keyup',  {key,bubbles:true}));},{passive:false});
+      btn.addEventListener('mousedown', ()=>document.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true})));
+      btn.addEventListener('mouseup',   ()=>document.dispatchEvent(new KeyboardEvent('keyup',  {key,bubbles:true})));
+    });
   } else if(game==='bubbles'){
     ctrl.innerHTML=`<div style="font-family:var(--font-hd);font-size:10px;letter-spacing:2px;color:var(--sub);text-align:center;padding:8px">TAP THE CANVAS TO AIM &amp; SHOOT</div>`;
   }
@@ -999,3 +1030,423 @@ id('firstSelect').addEventListener('change',e=>{ firstMode=e.target.value; local
 
 // Load hi scores
 ['bubbles','snake','breakout','flappy'].forEach(g=>{ try{arcadeHiScore[g]=parseInt(localStorage.getItem('hi_'+g))||0;}catch(e){} });
+
+// ══════════════════════════════════════════════
+// ⚽  BALL BATTLE  –  physics arena
+// ══════════════════════════════════════════════
+function startBallBattle(mode) { // mode: 'bot' | '2p'
+  const W = canvas.width, H = canvas.height;
+  const CX = W / 2, CY = H / 2;
+  const ARENA_R = Math.min(W, H) * 0.42;
+  const BALL_R = W < 360 ? 20 : 24;
+  const FRICTION = 0.985;
+  const PUSH_FORCE = 7;
+  const BOT_SPEED = 2.8;
+
+  // Power-ups
+  const POWERUPS = [];
+  let puTimer = 0;
+
+  // Players
+  const players = [
+    { x: CX - ARENA_R * 0.45, y: CY, vx: 0, vy: 0, r: BALL_R, color: '#ff6b9d', hp: 5, maxHp: 5, name: 'P1', angle: 0, dashTimer: 0, shield: 0, speed: 1, emoji: '🔴' },
+    { x: CX + ARENA_R * 0.45, y: CY, vx: 0, vy: 0, r: BALL_R, color: '#6bdbff', hp: 5, maxHp: 5, name: mode === 'bot' ? 'BOT' : 'P2', angle: 0, dashTimer: 0, shield: 0, speed: 1, emoji: '🔵' }
+  ];
+
+  // Input
+  const keys = {};
+  function onKey(e) { keys[e.code] = e.type === 'keydown'; }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKey);
+
+  // Touch joystick for P1
+  let touch1 = null;
+  let touchStart1 = null;
+  let dashTouch = false;
+
+  function onTouchStart(e) {
+    for (const t of e.changedTouches) {
+      const rect = canvas.getBoundingClientRect();
+      const s = W / rect.width;
+      const tx = (t.clientX - rect.left) * s;
+      const ty = (t.clientY - rect.top) * s;
+      if (tx < W / 2) { touch1 = { id: t.identifier, x: tx, y: ty }; touchStart1 = { x: tx, y: ty }; }
+      else { dashTouch = true; setTimeout(() => dashTouch = false, 200); }
+    }
+  }
+  function onTouchMove(e) {
+    for (const t of e.changedTouches) {
+      if (touch1 && t.identifier === touch1.id) touch1 = { id: t.identifier, x: (t.clientX - canvas.getBoundingClientRect().left) * (W / canvas.getBoundingClientRect().width), y: (t.clientY - canvas.getBoundingClientRect().top) * (W / canvas.getBoundingClientRect().width) };
+    }
+  }
+  function onTouchEnd(e) { for (const t of e.changedTouches) { if (touch1 && t.identifier === touch1.id) { touch1 = null; touchStart1 = null; } } }
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: true });
+  canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+
+  arcadeGame = {
+    cleanup() {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKey);
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+    }
+  };
+
+  // Build controls UI
+  const ctrl = id('arcadeControls');
+  if (mode === 'bot') {
+    ctrl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:6px">
+        <div></div><button class="arc-btn" id="bb_up">▲</button><button class="arc-btn" id="bb_dash" style="border-color:var(--accent2);color:var(--accent2);font-size:11px;letter-spacing:1px">DASH</button>
+        <button class="arc-btn" id="bb_left">◀</button><button class="arc-btn" id="bb_down">▼</button><button class="arc-btn" id="bb_right">▶</button>
+      </div>`;
+    const btnMap = { bb_up: 'ArrowUp', bb_down: 'ArrowDown', bb_left: 'ArrowLeft', bb_right: 'ArrowRight', bb_dash: 'Space' };
+    Object.entries(btnMap).forEach(([id_, code]) => {
+      const el = document.getElementById(id_);
+      if (!el) return;
+      el.addEventListener('touchstart', e => { e.preventDefault(); keys[code] = true; }, { passive: false });
+      el.addEventListener('touchend', e => { e.preventDefault(); keys[code] = false; }, { passive: false });
+      el.addEventListener('mousedown', () => keys[code] = true);
+      el.addEventListener('mouseup', () => keys[code] = false);
+    });
+  } else {
+    ctrl.innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <div style="text-align:center">
+          <div style="font-family:var(--font-hd);font-size:9px;color:var(--sub);letter-spacing:1px;margin-bottom:6px">P1</div>
+          <div style="display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:5px">
+            <div></div><button class="arc-btn" id="bb_up">▲</button><button class="arc-btn" id="bb_dash1" style="font-size:10px;border-color:var(--accent2);color:var(--accent2)">DASH</button>
+            <button class="arc-btn" id="bb_left">◀</button><button class="arc-btn" id="bb_down">▼</button><button class="arc-btn" id="bb_right">▶</button>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:var(--font-hd);font-size:9px;color:var(--sub);letter-spacing:1px;margin-bottom:6px">P2</div>
+          <div style="display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:5px">
+            <div></div><button class="arc-btn" id="bb_w">▲</button><button class="arc-btn" id="bb_dash2" style="font-size:10px;border-color:var(--o-col);color:var(--o-col)">DASH</button>
+            <button class="arc-btn" id="bb_a">◀</button><button class="arc-btn" id="bb_s">▼</button><button class="arc-btn" id="bb_d">▶</button>
+          </div>
+        </div>
+      </div>`;
+    const btnMap2 = { bb_up: 'ArrowUp', bb_down: 'ArrowDown', bb_left: 'ArrowLeft', bb_right: 'ArrowRight', bb_dash1: 'Space', bb_w: 'KeyW', bb_s: 'KeyS', bb_a: 'KeyA', bb_d: 'KeyD', bb_dash2: 'ShiftLeft' };
+    Object.entries(btnMap2).forEach(([id_, code]) => {
+      const el = document.getElementById(id_);
+      if (!el) return;
+      el.addEventListener('touchstart', e => { e.preventDefault(); keys[code] = true; }, { passive: false });
+      el.addEventListener('touchend', e => { e.preventDefault(); keys[code] = false; }, { passive: false });
+      el.addEventListener('mousedown', () => keys[code] = true);
+      el.addEventListener('mouseup', () => keys[code] = false);
+    });
+  }
+
+  // Stars background
+  const stars = Array.from({ length: 60 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(0.5, 2), a: rnd(0.1, 0.5) }));
+
+  // Particles
+  let particles = [];
+  function burst(x, y, color, n = 12) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, spd = rnd(2, 7);
+      particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: rnd(3, 7), color, life: 1 });
+    }
+  }
+
+  // Spawn power-up
+  function spawnPU() {
+    const types = ['speed', 'shield', 'push', 'shrink'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = rnd(20, ARENA_R * 0.55);
+    POWERUPS.push({
+      x: CX + Math.cos(angle) * dist, y: CY + Math.sin(angle) * dist,
+      type, r: 14, life: 1, pulse: 0,
+      color: { speed: '#facc15', shield: '#7c6fff', push: '#ff6b9d', shrink: '#4ade80' }[type],
+      emoji: { speed: '⚡', shield: '🛡', push: '💥', shrink: '🔬' }[type]
+    });
+  }
+
+  // Round state
+  let roundWins = [0, 0];
+  let roundOver = false;
+  let roundOverTimer = 0;
+  let flashMsg = '', flashTimer = 0;
+
+  function resetRound() {
+    players[0].x = CX - ARENA_R * 0.45; players[0].y = CY; players[0].vx = 0; players[0].vy = 0; players[0].hp = 5; players[0].shield = 0; players[0].speed = 1;
+    players[1].x = CX + ARENA_R * 0.45; players[1].y = CY; players[1].vx = 0; players[1].vy = 0; players[1].hp = 5; players[1].shield = 0; players[1].speed = 1;
+    POWERUPS.length = 0; roundOver = false; puTimer = 0;
+  }
+
+  function loop() {
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    stars.forEach(s => { ctx.globalAlpha = s.a; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); });
+    ctx.globalAlpha = 1;
+
+    // Arena
+    // Outer glow
+    const aGrd = ctx.createRadialGradient(CX, CY, ARENA_R * 0.7, CX, CY, ARENA_R + 20);
+    aGrd.addColorStop(0, 'transparent'); aGrd.addColorStop(1, '#7c6fff22');
+    ctx.fillStyle = aGrd; ctx.beginPath(); ctx.arc(CX, CY, ARENA_R + 20, 0, Math.PI * 2); ctx.fill();
+    // Floor
+    ctx.fillStyle = '#12121a'; ctx.beginPath(); ctx.arc(CX, CY, ARENA_R, 0, Math.PI * 2); ctx.fill();
+    // Floor grid
+    ctx.save(); ctx.clip(); ctx.beginPath(); ctx.arc(CX, CY, ARENA_R, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1c1c28'; ctx.lineWidth = 1;
+    for (let gx = CX - ARENA_R; gx < CX + ARENA_R; gx += 32) { ctx.beginPath(); ctx.moveTo(gx, CY - ARENA_R); ctx.lineTo(gx, CY + ARENA_R); ctx.stroke(); }
+    for (let gy = CY - ARENA_R; gy < CY + ARENA_R; gy += 32) { ctx.beginPath(); ctx.moveTo(CX - ARENA_R, gy); ctx.lineTo(CX + ARENA_R, gy); ctx.stroke(); }
+    ctx.restore();
+    // Border
+    ctx.strokeStyle = '#7c6fff88'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(CX, CY, ARENA_R, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#7c6fff33'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.arc(CX, CY, ARENA_R + 4, 0, Math.PI * 2); ctx.stroke();
+
+    if (!roundOver) {
+      // ── INPUT ──
+      // P1 keyboard
+      let ax1 = 0, ay1 = 0;
+      if (keys['ArrowLeft']) ax1 -= 1;
+      if (keys['ArrowRight']) ax1 += 1;
+      if (keys['ArrowUp']) ay1 -= 1;
+      if (keys['ArrowDown']) ay1 += 1;
+      // P1 touch joystick
+      if (touch1 && touchStart1) {
+        const dx = touch1.x - touchStart1.x, dy = touch1.y - touchStart1.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 8) { ax1 = dx / len; ay1 = dy / len; }
+      }
+      const spd1 = 3.5 * players[0].speed;
+      players[0].vx += ax1 * 0.8; players[0].vy += ay1 * 0.8;
+
+      // P1 dash
+      if ((keys['Space'] || dashTouch) && players[0].dashTimer <= 0) {
+        const len = Math.hypot(players[0].vx, players[0].vy) || 1;
+        players[0].vx += (players[0].vx / len) * 8;
+        players[0].vy += (players[0].vy / len) * 8;
+        players[0].dashTimer = 45;
+        burst(players[0].x, players[0].y, players[0].color, 8);
+      }
+      if (players[0].dashTimer > 0) players[0].dashTimer--;
+
+      if (mode === '2p') {
+        // P2 keyboard WASD
+        let ax2 = 0, ay2 = 0;
+        if (keys['KeyA']) ax2 -= 1;
+        if (keys['KeyD']) ax2 += 1;
+        if (keys['KeyW']) ay2 -= 1;
+        if (keys['KeyS']) ay2 += 1;
+        players[1].vx += ax2 * 0.8; players[1].vy += ay2 * 0.8;
+        if ((keys['ShiftLeft'] || keys['ShiftRight']) && players[1].dashTimer <= 0) {
+          const len = Math.hypot(players[1].vx, players[1].vy) || 1;
+          players[1].vx += (players[1].vx / len) * 8;
+          players[1].vy += (players[1].vy / len) * 8;
+          players[1].dashTimer = 45;
+          burst(players[1].x, players[1].y, players[1].color, 8);
+        }
+        if (players[1].dashTimer > 0) players[1].dashTimer--;
+      } else {
+        // BOT AI
+        const p = players[0], b = players[1];
+        const dx = p.x - b.x, dy = p.y - b.y, dist = Math.hypot(dx, dy);
+        // Check if PU closer
+        let target = { x: p.x, y: p.y };
+        for (const pu of POWERUPS) {
+          const d = Math.hypot(pu.x - b.x, pu.y - b.y);
+          if (d < ARENA_R * 0.4 && (pu.type === 'speed' || pu.type === 'push')) { target = pu; break; }
+        }
+        const tdx = target.x - b.x, tdy = target.y - b.y, tlen = Math.hypot(tdx, tdy) || 1;
+        // Stay in arena
+        const distFromCenter = Math.hypot(b.x - CX, b.y - CY);
+        if (distFromCenter > ARENA_R * 0.75) {
+          b.vx += ((CX - b.x) / distFromCenter) * 1.5;
+          b.vy += ((CY - b.y) / distFromCenter) * 1.5;
+        } else {
+          b.vx += (tdx / tlen) * BOT_SPEED * 0.25;
+          b.vy += (tdy / tlen) * BOT_SPEED * 0.25;
+        }
+        if (dist < BALL_R * 4 && b.dashTimer <= 0 && Math.random() < 0.05) {
+          b.vx += (dx / dist) * -6; b.vy += (dy / dist) * -6;
+          b.dashTimer = 45; burst(b.x, b.y, b.color, 8);
+        }
+        if (b.dashTimer > 0) b.dashTimer--;
+      }
+
+      // ── PHYSICS ──
+      for (const p of players) {
+        const maxSpd = 10 * p.speed;
+        const spd = Math.hypot(p.vx, p.vy);
+        if (spd > maxSpd) { p.vx = p.vx / spd * maxSpd; p.vy = p.vy / spd * maxSpd; }
+        p.vx *= FRICTION; p.vy *= FRICTION;
+        p.x += p.vx; p.y += p.vy;
+        p.angle += (p.vx * 0.05);
+        if (p.shield > 0) p.shield--;
+      }
+
+      // Ball vs ball collision
+      const [p1, p2] = players;
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < p1.r + p2.r && dist > 0) {
+        const nx = dx / dist, ny = dy / dist;
+        const overlap = (p1.r + p2.r - dist) / 2;
+        p1.x -= nx * overlap; p1.y -= ny * overlap;
+        p2.x += nx * overlap; p2.y += ny * overlap;
+        const relVx = p1.vx - p2.vx, relVy = p1.vy - p2.vy;
+        const dot = relVx * nx + relVy * ny;
+        if (dot > 0) {
+          const impulse = dot * 1.3;
+          p1.vx -= nx * impulse; p1.vy -= ny * impulse;
+          p2.vx += nx * impulse; p2.vy += ny * impulse;
+          // Damage
+          const impact = Math.abs(dot);
+          if (impact > 2) {
+            const dmg = Math.floor(impact * 0.5);
+            if (p1.shield <= 0) { p1.hp = Math.max(0, p1.hp - dmg); burst(p1.x, p1.y, p1.color, 6); }
+            if (p2.shield <= 0) { p2.hp = Math.max(0, p2.hp - dmg); burst(p2.x, p2.y, p2.color, 6); }
+          }
+        }
+      }
+
+      // Arena boundary — bounce with damage
+      for (const p of players) {
+        const d = Math.hypot(p.x - CX, p.y - CY);
+        if (d + p.r > ARENA_R) {
+          const nx = (p.x - CX) / d, ny = (p.y - CY) / d;
+          p.x = CX + nx * (ARENA_R - p.r - 1);
+          p.y = CY + ny * (ARENA_R - p.r - 1);
+          const dot = p.vx * nx + p.vy * ny;
+          p.vx -= 2 * dot * nx * 0.8; p.vy -= 2 * dot * ny * 0.8;
+          if (Math.abs(dot) > 3 && p.shield <= 0) { p.hp = Math.max(0, p.hp - 1); burst(p.x, p.y, p.color, 5); }
+        }
+      }
+
+      // Power-ups
+      puTimer++;
+      if (puTimer % 300 === 0 && POWERUPS.length < 3) spawnPU();
+      for (let i = POWERUPS.length - 1; i >= 0; i--) {
+        const pu = POWERUPS[i];
+        pu.pulse += 0.08;
+        for (const p of players) {
+          if (Math.hypot(p.x - pu.x, p.y - pu.y) < p.r + pu.r) {
+            burst(pu.x, pu.y, pu.color, 10);
+            flashMsg = (p === players[0] ? '🔴' : '🔵') + ' ' + pu.emoji;
+            flashTimer = 80;
+            if (pu.type === 'speed') p.speed = Math.min(2, p.speed + 0.4);
+            if (pu.type === 'shield') p.shield = 180;
+            if (pu.type === 'push') { const other = p === players[0] ? players[1] : players[0]; const od = Math.hypot(other.x - CX, other.y - CY); const ox = (other.x - CX) / (od || 1), oy = (other.y - CY) / (od || 1); other.vx += ox * 12; other.vy += oy * 12; }
+            if (pu.type === 'shrink') { const other = p === players[0] ? players[1] : players[0]; other.r = Math.max(12, other.r - 4); setTimeout(() => other.r = BALL_R, 5000); }
+            POWERUPS.splice(i, 1); break;
+          }
+        }
+      }
+
+      // Check death
+      for (let i = 0; i < 2; i++) {
+        if (players[i].hp <= 0) {
+          roundWins[1 - i]++;
+          arcadeScore = roundWins[0] * 100;
+          updateArcadeScore();
+          roundOver = true;
+          roundOverTimer = 120;
+          burst(players[i].x, players[i].y, players[i].color, 25);
+          if (roundWins[0] >= 3) { setTimeout(() => gameOver('🏆', mode === 'bot' ? 'YOU WIN!' : 'P1 WINS!'), 500); return; }
+          if (roundWins[1] >= 3) { setTimeout(() => gameOver('💀', mode === 'bot' ? 'BOT WINS!' : 'P2 WINS!'), 500); return; }
+        }
+      }
+    } else {
+      roundOverTimer--;
+      if (roundOverTimer <= 0) resetRound();
+    }
+
+    // Draw power-ups
+    for (const pu of POWERUPS) {
+      const pr = pu.r + Math.sin(pu.pulse) * 2;
+      ctx.save();
+      ctx.shadowColor = pu.color; ctx.shadowBlur = 15;
+      ctx.strokeStyle = pu.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(pu.x, pu.y, pr, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      ctx.font = `${pr * 1.2}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(pu.emoji, pu.x, pu.y);
+    }
+
+    // Draw particles
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2); ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92; p.life -= 0.04;
+    });
+    particles = particles.filter(p => p.life > 0);
+    ctx.globalAlpha = 1;
+
+    // Draw players
+    for (const p of players) {
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+      // Shadow
+      ctx.fillStyle = p.color + '33'; ctx.beginPath(); ctx.arc(3, 3, p.r, 0, Math.PI * 2); ctx.fill();
+      // Shield ring
+      if (p.shield > 0) {
+        ctx.strokeStyle = '#7c6fff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.01) * 0.3;
+        ctx.beginPath(); ctx.arc(0, 0, p.r + 6, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      // Body gradient
+      const grd = ctx.createRadialGradient(-p.r * 0.3, -p.r * 0.3, p.r * 0.1, 0, 0, p.r);
+      grd.addColorStop(0, '#fff9'); grd.addColorStop(0.4, p.color); grd.addColorStop(1, p.color + '88');
+      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+      // Shine
+      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.ellipse(-p.r * 0.25, -p.r * 0.3, p.r * 0.35, p.r * 0.22, -0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // HP bars
+    for (let i = 0; i < 2; i++) {
+      const p = players[i];
+      const bw = ARENA_R * 0.7, bh = 8;
+      const bx = i === 0 ? CX - ARENA_R - 10 - bw : CX + ARENA_R + 10;
+      const by = CY - bh / 2;
+      ctx.fillStyle = C.bg3; ctx.beginPath(); roundRect(ctx, bx, by, bw, bh, 4); ctx.fill();
+      const ratio = p.hp / p.maxHp;
+      ctx.fillStyle = ratio > 0.5 ? C.green : ratio > 0.25 ? C.yellow : C.pink;
+      ctx.beginPath(); roundRect(ctx, bx, by, bw * ratio, bh, 4); ctx.fill();
+      ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.beginPath(); roundRect(ctx, bx, by, bw, bh, 4); ctx.stroke();
+      ctx.fillStyle = C.text; ctx.font = `bold 10px ${C.font}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(p.name, bx + bw / 2, by - 3);
+    }
+
+    // Round wins
+    for (let i = 0; i < 2; i++) {
+      const bx = i === 0 ? CX - 50 : CX + 10;
+      for (let w = 0; w < 3; w++) {
+        ctx.fillStyle = w < roundWins[i] ? (i === 0 ? C.pink : C.cyan) : C.bg3;
+        ctx.strokeStyle = i === 0 ? C.pink : C.cyan; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(bx + w * 16, CY - ARENA_R - 22, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+    }
+
+    // Flash message
+    if (flashTimer > 0) {
+      ctx.globalAlpha = Math.min(1, flashTimer / 30);
+      ctx.font = `bold 20px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(flashMsg, CX, CY - ARENA_R * 0.6);
+      ctx.globalAlpha = 1; flashTimer--;
+    }
+
+    // Round over banner
+    if (roundOver) {
+      ctx.globalAlpha = 0.7; ctx.fillStyle = C.bg; ctx.fillRect(CX - 100, CY - 28, 200, 56); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.strokeRect(CX - 100, CY - 28, 200, 56);
+      ctx.fillStyle = C.accent; ctx.font = `bold 14px var(--font-hd, monospace)`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('ROUND OVER', CX, CY);
+    }
+
+    arcadeRAF = requestAnimationFrame(loop);
+  }
+  arcadeRAF = requestAnimationFrame(loop);
+}
