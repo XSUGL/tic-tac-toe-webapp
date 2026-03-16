@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
     <div class="noise"></div>
@@ -19,13 +19,13 @@
             <button class="icon-btn" id="settingsBtn">⚙</button>
         </div>
         <p class="hub-sub">SELECT GAME</p>
-        <div class="game-cards">
+        <div class="game-cards" id="gameCards">
             <div class="game-card" data-game="ttt">
                 <div class="card-shine"></div>
                 <div class="card-icon ttt-icon">✕ ○</div>
                 <div class="card-info">
                     <div class="card-title">TIC-TAC-TOE</div>
-                    <div class="card-desc">Classic 3×3</div>
+                    <div class="card-desc">Classic 3×3 grid</div>
                 </div>
             </div>
             <div class="game-card" data-game="ttt5">
@@ -35,7 +35,7 @@
                     <div class="card-title">TTT ULTRA</div>
                     <div class="card-desc">5 in a row wins</div>
                 </div>
-                <div class="badge">NEW</div>
+                <div class="badge">BOARD</div>
             </div>
             <div class="game-card" data-game="c4">
                 <div class="card-shine"></div>
@@ -44,19 +44,54 @@
                     <div class="card-title">CONNECT 4</div>
                     <div class="card-desc">Drop &amp; connect</div>
                 </div>
-                <div class="badge">NEW</div>
+                <div class="badge">BOARD</div>
+            </div>
+            <div class="game-card arcade-card" data-game="bubbles">
+                <div class="card-shine"></div>
+                <div class="card-icon bubbles-icon">◉ ◎ ◉</div>
+                <div class="card-info">
+                    <div class="card-title">BUBBLE BATTLE</div>
+                    <div class="card-desc">Physics &amp; gravity</div>
+                </div>
+                <div class="badge new">NEW</div>
+            </div>
+            <div class="game-card arcade-card" data-game="snake">
+                <div class="card-shine"></div>
+                <div class="card-icon snake-icon">〜〜▶</div>
+                <div class="card-info">
+                    <div class="card-title">SNAKE</div>
+                    <div class="card-desc">Eat &amp; grow</div>
+                </div>
+                <div class="badge new">NEW</div>
+            </div>
+            <div class="game-card arcade-card" data-game="breakout">
+                <div class="card-shine"></div>
+                <div class="card-icon breakout-icon">▬▬▬</div>
+                <div class="card-info">
+                    <div class="card-title">BREAKOUT</div>
+                    <div class="card-desc">Break all blocks</div>
+                </div>
+                <div class="badge new">NEW</div>
+            </div>
+            <div class="game-card arcade-card" data-game="flappy">
+                <div class="card-shine"></div>
+                <div class="card-icon flappy-icon">▲ ║ ║</div>
+                <div class="card-info">
+                    <div class="card-title">FLAPPY</div>
+                    <div class="card-desc">Tap to fly</div>
+                </div>
+                <div class="badge new">NEW</div>
             </div>
         </div>
     </div>
 
-    <!-- GAME SCREEN -->
+    <!-- BOARD GAME SCREEN (TTT / C4) -->
     <div class="game-screen hidden" id="gameScreen">
         <div class="topbar">
             <button class="back-btn" id="backBtn">← MENU</button>
             <div class="game-name" id="gameName">TIC-TAC-TOE</div>
             <button class="icon-btn" id="settingsBtnGame">⚙</button>
         </div>
-
         <div class="setup" id="setup">
             <div class="pill-row">
                 <button class="pill active" data-mode="bot" id="botPill">🤖 VS BOT</button>
@@ -69,14 +104,12 @@
             </div>
             <button class="start-btn pulse" id="startBtn">▶ START GAME</button>
         </div>
-
         <div class="turn-bar hidden" id="turnBar">
             <div class="turn-player">
                 <span class="turn-symbol" id="turnSymbol">✕</span>
                 <span id="turnLabel">YOUR TURN</span>
             </div>
         </div>
-
         <div class="scoreboard">
             <div class="score-col">
                 <div class="score-label" id="sName1">PLAYER</div>
@@ -93,7 +126,6 @@
                 <div class="score-val" id="sVal2">0</div>
             </div>
         </div>
-
         <div class="board-area">
             <div class="ttt-board hidden" id="tttBoard"></div>
             <div class="ttt5-board hidden" id="ttt5Board"></div>
@@ -102,11 +134,29 @@
                 <div class="c4-grid" id="c4Grid"></div>
             </div>
         </div>
-
         <div class="ctrl-row hidden" id="ctrlRow">
             <button class="ctrl-btn accent" id="restartBtn">↺ RESTART</button>
             <button class="ctrl-btn" id="newGameBtn">⊞ NEW GAME</button>
         </div>
+    </div>
+
+    <!-- ARCADE SCREEN (Canvas games) -->
+    <div class="arcade-screen hidden" id="arcadeScreen">
+        <div class="topbar">
+            <button class="back-btn" id="arcadeBack">← MENU</button>
+            <div class="game-name" id="arcadeName">BUBBLES</div>
+            <div class="score-pill" id="arcadeScore">0</div>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="arcadeCanvas"></canvas>
+            <div class="arcade-overlay hidden" id="arcadeOverlay">
+                <div class="overlay-emoji" id="overlayEmoji">🎮</div>
+                <div class="overlay-title" id="overlayTitle">READY?</div>
+                <div class="overlay-sub" id="overlaySub"></div>
+                <button class="start-btn" id="overlayBtn">▶ PLAY</button>
+            </div>
+        </div>
+        <div class="arcade-controls" id="arcadeControls"></div>
     </div>
 
     <!-- Settings Modal -->
@@ -131,7 +181,7 @@
         </div>
     </div>
 
-    <!-- Result Modal -->
+    <!-- Result Modal (board games) -->
     <div class="overlay hidden" id="resultModal">
         <div class="modal-box result-box">
             <div class="result-emoji" id="resultEmoji">🎉</div>
@@ -141,6 +191,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=4"></script>
 </body>
 </html>
