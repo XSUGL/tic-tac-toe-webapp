@@ -56,7 +56,7 @@ const resultModal = id('resultModal');
 
 // ── HUB ────────────────────────────────────────
 const BOARD_GAMES = ['ttt','ttt5','c4'];
-const ARCADE_GAMES = ['bubbles','snake','breakout','flappy','ballbattle'];
+const ARCADE_GAMES = ['bubbles','snake','breakout','flappy','ballbattle','capybara'];
 
 document.querySelectorAll('.game-card').forEach(card => {
   card.addEventListener('click', () => {
@@ -400,7 +400,7 @@ let arcadeHiScore = {};
 function openArcade(g) {
   stopArcade();
   currentGame = g;
-  id('arcadeName').textContent = {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD',ballbattle:'BALL BATTLE'}[g];
+  id('arcadeName').textContent = {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD',ballbattle:'BALL BATTLE',capybara:'CAPYBARA RUN'}[g];
   hide(hub); show(arcadeScreen);
   setupCanvas();
   if (g === 'ballbattle') {
@@ -410,7 +410,7 @@ function openArcade(g) {
     return;
   }
   buildControls(g);
-  showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD'}[g], {bubbles:'TAP TO SHOOT',snake:'TAP TO START',breakout:'MOVE PADDLE',flappy:'TAP TO FLY'}[g]);
+  showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD',capybara:'CAPYBARA RUN'}[g], {bubbles:'TAP TO SHOOT',snake:'TAP TO START',breakout:'MOVE PADDLE',flappy:'TAP TO FLY',capybara:'TAP TO JUMP'}[g]);
 }
 
 function setupCanvas(){
@@ -441,6 +441,7 @@ id('overlayBtn').addEventListener('click', ()=>{
   if(currentGame==='snake')   startSnake();
   if(currentGame==='breakout')startBreakout();
   if(currentGame==='flappy')  startFlappy();
+  if(currentGame==='capybara') startCapybara();
   if(currentGame==='ballbattle') openBallBattle();
 });
 
@@ -747,6 +748,181 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
 }
 
+// ── WEAPON ICON RENDERER ─────────────────────────────────
+// Draws a proper canvas icon for each weapon (no emoji)
+function drawWeaponIcon(ctx, weaponKey, cx, cy, size, col) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const s = size; // scale unit
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  switch (weaponKey) {
+    case 'sword': {
+      // Blade
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = s * 0.18;
+      ctx.beginPath(); ctx.moveTo(-s*0.05, s*0.9); ctx.lineTo(s*0.05, -s*0.9); ctx.stroke();
+      // Guard
+      ctx.lineWidth = s * 0.14;
+      ctx.beginPath(); ctx.moveTo(-s*0.55, s*0.1); ctx.lineTo(s*0.55, s*0.1); ctx.stroke();
+      // Pommel
+      ctx.fillStyle = '#a0aec0';
+      ctx.beginPath(); ctx.arc(0, s*0.75, s*0.17, 0, Math.PI*2); ctx.fill();
+      // Tip shine
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.08;
+      ctx.beginPath(); ctx.moveTo(s*0.02, -s*0.7); ctx.lineTo(s*0.04, -s*0.9); ctx.stroke();
+      break;
+    }
+    case 'hammer': {
+      // Handle
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s * 0.15;
+      ctx.beginPath(); ctx.moveTo(0, s*0.85); ctx.lineTo(0, -s*0.2); ctx.stroke();
+      // Head
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath();
+      roundRect(ctx, -s*0.45, -s*0.85, s*0.9, s*0.55, s*0.1);
+      ctx.fill();
+      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.06;
+      ctx.stroke();
+      // Face highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      roundRect(ctx, -s*0.38, -s*0.78, s*0.76, s*0.18, s*0.06); ctx.fill();
+      break;
+    }
+    case 'scythe': {
+      // Handle
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
+      ctx.beginPath(); ctx.moveTo(-s*0.3, s*0.9); ctx.lineTo(s*0.3, -s*0.6); ctx.stroke();
+      // Blade curve (moon shape)
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = s*0.17;
+      ctx.beginPath();
+      ctx.arc(s*0.15, -s*0.45, s*0.6, Math.PI*1.05, Math.PI*1.75);
+      ctx.stroke();
+      // Inner curve (concave)
+      ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = s*0.1;
+      ctx.beginPath();
+      ctx.arc(s*0.1, -s*0.38, s*0.46, Math.PI*1.08, Math.PI*1.72);
+      ctx.stroke();
+      // Tip
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(s*0.3, -s*0.87, s*0.1, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'spear': {
+      // Shaft
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
+      ctx.beginPath(); ctx.moveTo(0, s*0.9); ctx.lineTo(0, -s*0.3); ctx.stroke();
+      // Tip triangle
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.95);
+      ctx.lineTo(-s*0.2, -s*0.3);
+      ctx.lineTo(s*0.2, -s*0.3);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.05; ctx.stroke();
+      // Highlight
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.07;
+      ctx.beginPath(); ctx.moveTo(-s*0.05, -s*0.8); ctx.lineTo(s*0.03, -s*0.45); ctx.stroke();
+      break;
+    }
+    case 'bow': {
+      // Bow arc
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
+      ctx.beginPath(); ctx.arc(s*0.25, 0, s*0.75, Math.PI*0.6, Math.PI*1.4); ctx.stroke();
+      // String
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = s*0.06;
+      ctx.beginPath();
+      ctx.moveTo(s*0.25 + s*0.75*Math.cos(Math.PI*0.6), s*0.75*Math.sin(Math.PI*0.6));
+      ctx.lineTo(-s*0.12, 0);
+      ctx.lineTo(s*0.25 + s*0.75*Math.cos(Math.PI*1.4), s*0.75*Math.sin(Math.PI*1.4));
+      ctx.stroke();
+      // Arrow
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = s*0.09;
+      ctx.beginPath(); ctx.moveTo(s*0.5, 0); ctx.lineTo(-s*0.55, 0); ctx.stroke();
+      // Arrow tip
+      ctx.fillStyle = '#9ca3af';
+      ctx.beginPath(); ctx.moveTo(-s*0.55,0); ctx.lineTo(-s*0.35,-s*0.12); ctx.lineTo(-s*0.35,s*0.12); ctx.closePath(); ctx.fill();
+      // Fletching
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = s*0.08;
+      ctx.beginPath(); ctx.moveTo(s*0.38,-s*0.14); ctx.lineTo(s*0.5,0); ctx.lineTo(s*0.38,s*0.14); ctx.stroke();
+      break;
+    }
+    case 'shield': {
+      // Shield body
+      ctx.fillStyle = '#1e3a5f';
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.92);
+      ctx.bezierCurveTo(s*0.7, -s*0.92, s*0.85, -s*0.2, s*0.85, s*0.1);
+      ctx.bezierCurveTo(s*0.85, s*0.55, s*0.45, s*0.85, 0, s*0.95);
+      ctx.bezierCurveTo(-s*0.45, s*0.85, -s*0.85, s*0.55, -s*0.85, s*0.1);
+      ctx.bezierCurveTo(-s*0.85, -s*0.2, -s*0.7, -s*0.92, 0, -s*0.92);
+      ctx.closePath(); ctx.fill();
+      // Border
+      ctx.strokeStyle = '#e53e3e'; ctx.lineWidth = s*0.1; ctx.stroke();
+      // Emblem
+      ctx.fillStyle = '#e53e3e';
+      ctx.beginPath(); ctx.moveTo(0,-s*0.35); ctx.lineTo(s*0.28,s*0.1); ctx.lineTo(-s*0.28,s*0.1); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0,s*0.42); ctx.lineTo(s*0.28,-s*0.03); ctx.lineTo(-s*0.28,-s*0.03); ctx.closePath(); ctx.fill();
+      // Shine
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath(); ctx.ellipse(-s*0.2, -s*0.3, s*0.2, s*0.45, -0.4, 0, Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'dagger': {
+      // Blade
+      ctx.fillStyle = '#d1d5db';
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.92);
+      ctx.lineTo(-s*0.12, s*0.1);
+      ctx.lineTo(s*0.12, s*0.1);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.05; ctx.stroke();
+      // Fuller (groove)
+      ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = s*0.05;
+      ctx.beginPath(); ctx.moveTo(0, -s*0.78); ctx.lineTo(0, s*0.05); ctx.stroke();
+      // Guard
+      ctx.fillStyle = '#92400e';
+      ctx.beginPath(); roundRect(ctx, -s*0.32, s*0.07, s*0.64, s*0.16, s*0.06); ctx.fill();
+      // Handle
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath(); roundRect(ctx, -s*0.14, s*0.22, s*0.28, s*0.62, s*0.08); ctx.fill();
+      // Pommel
+      ctx.fillStyle = '#92400e';
+      ctx.beginPath(); ctx.arc(0, s*0.9, s*0.15, 0, Math.PI*2); ctx.fill();
+      // Blade shine
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.06; ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.moveTo(-s*0.05,-s*0.78); ctx.lineTo(-s*0.04,-s*0.15); ctx.stroke();
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'lightning': {
+      // Bolt shape
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.moveTo(s*0.18, -s*0.92);
+      ctx.lineTo(-s*0.28, s*0.0);
+      ctx.lineTo(s*0.05, s*0.0);
+      ctx.lineTo(-s*0.18, s*0.92);
+      ctx.lineTo(s*0.42, -s*0.08);
+      ctx.lineTo(s*0.08, -s*0.08);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = s*0.06; ctx.stroke();
+      // Inner glow
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(s*0.12, -s*0.7);
+      ctx.lineTo(-s*0.1, s*0.0);
+      ctx.lineTo(s*0.04, s*0.0);
+      ctx.lineTo(-s*0.06, s*0.62);
+      ctx.lineTo(s*0.28, -s*0.08);
+      ctx.lineTo(s*0.06, -s*0.08);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+
 // ══════════════════════════════════════════════
 // 🧱  BREAKOUT
 // ══════════════════════════════════════════════
@@ -984,6 +1160,9 @@ function buildControls(game){
       b.addEventListener('mousedown',()=>{ iv=setInterval(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k})),50); });
       b.addEventListener('mouseup',()=>clearInterval(iv));
     });
+  } else if(game==='capybara'){
+    ctrl.innerHTML=`<button class="arc-btn wide" id="capy_jump">🐾 JUMP</button>`;
+    document.getElementById('capy_jump').addEventListener('click',()=>document.dispatchEvent(new KeyboardEvent('keydown',{code:'Space'})));
   } else if(game==='flappy'){
     ctrl.innerHTML=`<button class="arc-btn wide" id="flapBtn">🐦 TAP / FLAP</button>`;
     id('flapBtn').addEventListener('click',()=>canvas.dispatchEvent(new MouseEvent('click')));
@@ -1021,7 +1200,7 @@ id('firstSelect').addEventListener('change',e=>{ firstMode=e.target.value; local
 [id('settingsModal'),id('resultModal')].forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) hide(m); }));
 
 // Load hi scores
-['bubbles','snake','breakout','flappy'].forEach(g=>{ try{arcadeHiScore[g]=parseInt(localStorage.getItem('hi_'+g))||0;}catch(e){} });
+['bubbles','snake','breakout','flappy','capybara'].forEach(g=>{ try{arcadeHiScore[g]=parseInt(localStorage.getItem('hi_'+g))||0;}catch(e){} });
 
 // ══════════════════════════════════════════════
 
@@ -1527,11 +1706,9 @@ function wbDraw() {
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r+5, 0, Math.PI*2); ctx.stroke();
     }
 
-    // Weapon emoji (small, centered)
+    // Weapon icon (canvas SVG-style)
     ctx.globalAlpha = 1;
-    ctx.font = `${b.r * 0.85}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(w.emoji, b.x, b.y + 1);
+    drawWeaponIcon(ctx, b.weaponKey, b.x, b.y, b.r * 0.62, b.color);
 
     ctx.restore();
   }
@@ -1623,10 +1800,8 @@ function wbDrawSelect() {
     ctx.lineWidth = sel ? 2.5 : 1.5;
     roundRect(ctx, cx, cy, cellW, cellH, 10); ctx.fill(); ctx.stroke();
 
-    // Emoji
-    ctx.font = `${cellH*0.38}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(w.emoji, cx+cellW/2, cy+cellH*0.42);
+    // Weapon icon
+    drawWeaponIcon(ctx, key, cx+cellW/2, cy+cellH*0.38, cellH*0.22, w.color);
 
     // Name
     ctx.fillStyle = sel ? w.color : C.text;
@@ -1648,8 +1823,7 @@ function wbDrawSelect() {
     roundRect(ctx, pad, panY, W-pad*2, panH, 10); ctx.fill(); ctx.stroke();
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `${W*0.048}px serif`;
-    ctx.fillText(sw.emoji, W/2, panY + panH*0.28);
+    drawWeaponIcon(ctx, WB.playerWeapon, W/2, panY + panH*0.28, panH*0.2, sw.color);
 
     ctx.fillStyle = sw.color;
     ctx.font = `bold ${W*0.042}px 'Orbitron', monospace`;
@@ -1943,4 +2117,370 @@ function wbShowResultBtns() {
   id('wbMenu').addEventListener('click', () => {
     stopArcade(); hide(arcadeScreen); show(hub);
   });
+}
+
+// ══════════════════════════════════════════════════════════
+//  🐾  CAPYBARA RUN  –  Platformer with capybara character
+// ══════════════════════════════════════════════════════════
+function startCapybara() {
+  const W = canvas.width, H = canvas.height;
+  const GRAVITY = 0.55, JUMP_FORCE = -13, MOVE_SPD = 4.5;
+  const GROUND = H - 45;
+
+  let score = 0, distance = 0;
+  let gameSpeed = 3.5;
+  let frame = 0;
+
+  // Capy
+  const capy = {
+    x: W * 0.18, y: GROUND, w: 52, h: 38,
+    vy: 0, vx: 0, onGround: true,
+    jumps: 2, // double jump
+    walkFrame: 0, dead: false,
+    coyoteTime: 0,  // frames after leaving platform still can jump
+  };
+
+  // Platforms
+  const platforms = [
+    { x: 0, y: GROUND, w: W, h: 45, color: '#1c1c28' }, // ground
+  ];
+
+  // Floating platforms pool
+  const floatPlats = [];
+  let platTimer = 0;
+
+  // Obstacles
+  const obstacles = [];
+  let obstTimer = 60;
+
+  // Collectibles (coins)
+  const coins = [];
+  let coinTimer = 40;
+
+  // Background layers (parallax)
+  const bgLayers = [
+    { items: Array.from({length:8},()=>({x:rnd(0,W), y:rnd(20,H*0.5), s:rnd(0.3,0.6)})), spd:0.2, color:'#ffffff15' },
+    { items: Array.from({length:5},()=>({x:rnd(0,W), y:rnd(H*0.3,H*0.7), s:rnd(0.6,1.2)})), spd:0.6, color:'#7c6fff22' },
+  ];
+
+  // Input
+  let jumpQueued = false;
+  function onKey(e) {
+    if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && e.type === 'keydown') {
+      jumpQueued = true; e.preventDefault();
+    }
+  }
+  function onTap(e) { jumpQueued = true; }
+  document.addEventListener('keydown', onKey);
+  canvas.addEventListener('touchstart', onTap, { passive: true });
+  canvas.addEventListener('click', onTap);
+
+  arcadeGame = {
+    cleanup() {
+      document.removeEventListener('keydown', onKey);
+      canvas.removeEventListener('touchstart', onTap);
+      canvas.removeEventListener('click', onTap);
+    }
+  };
+
+  // Draw capybara function
+  function drawCapybara(x, y, w, h, walkF, dead) {
+    ctx.save();
+    if (dead) { ctx.translate(x + w/2, y + h/2); ctx.rotate(Math.PI); ctx.translate(-(x + w/2), -(y + h/2)); }
+
+    const bx = x, by = y;
+    const scl = w / 52;
+
+    // Body (rounded rectangle)
+    ctx.fillStyle = '#8B6914';
+    ctx.beginPath();
+    ctx.ellipse(bx + w*0.5, by + h*0.55, w*0.5, h*0.42, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Belly lighter
+    ctx.fillStyle = '#B8882A';
+    ctx.beginPath();
+    ctx.ellipse(bx + w*0.5, by + h*0.6, w*0.32, h*0.28, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Legs (animated walk)
+    const legOffset = Math.sin(walkF * 0.28) * 5;
+    ctx.fillStyle = '#7A5C10';
+    // Back legs
+    ctx.beginPath(); ctx.ellipse(bx+w*0.25, by+h*0.88, w*0.1, h*0.18, legOffset*0.04, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx+w*0.35, by+h*0.88, w*0.1, h*0.18, -legOffset*0.04, 0, Math.PI*2); ctx.fill();
+    // Front legs
+    ctx.beginPath(); ctx.ellipse(bx+w*0.62, by+h*0.88, w*0.1, h*0.18, -legOffset*0.04, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.88, w*0.1, h*0.18, legOffset*0.04, 0, Math.PI*2); ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#8B6914';
+    ctx.beginPath();
+    ctx.ellipse(bx + w*0.78, by + h*0.3, w*0.26, h*0.28, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Snout (blunt / rectangular)
+    ctx.fillStyle = '#7A5C10';
+    ctx.beginPath();
+    roundRect(ctx, bx+w*0.82, by+h*0.22, w*0.22, h*0.22, 4*scl);
+    ctx.fill();
+
+    // Nostrils
+    ctx.fillStyle = '#5a4008';
+    ctx.beginPath(); ctx.arc(bx+w*0.88, by+h*0.32, 2*scl, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx+w*0.97, by+h*0.32, 2*scl, 0, Math.PI*2); ctx.fill();
+
+    // Eye
+    ctx.fillStyle = dead ? '#ff4444' : '#1a0a00';
+    ctx.beginPath(); ctx.arc(bx+w*0.83, by+h*0.2, 4*scl, 0, Math.PI*2); ctx.fill();
+    if (!dead) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx+w*0.85, by+h*0.18, 1.5*scl, 0, Math.PI*2); ctx.fill(); }
+    if (dead) {
+      // X eyes
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx+w*0.8,by+h*0.14); ctx.lineTo(bx+w*0.87,by+h*0.24); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+w*0.87,by+h*0.14); ctx.lineTo(bx+w*0.8,by+h*0.24); ctx.stroke();
+    }
+
+    // Ear
+    ctx.fillStyle = '#7A5C10';
+    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.08, 6*scl, 9*scl, -0.3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#c4903a';
+    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.09, 3.5*scl, 5.5*scl, -0.3, 0, Math.PI*2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function spawnPlatform() {
+    const lastPlat = floatPlats[floatPlats.length - 1];
+    const minX = lastPlat ? lastPlat.x + lastPlat.w + 80 : W + 60;
+    const pw = rnd(60, 140);
+    const py = rnd(GROUND - 160, GROUND - 70);
+    floatPlats.push({ x: Math.max(W, minX), y: py, w: pw, h: 14, color: '#2d2d3f' });
+  }
+
+  function spawnObstacle() {
+    const types = ['cactus', 'rock', 'log'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const h2 = type === 'cactus' ? rnd(35, 55) : type === 'rock' ? rnd(22, 38) : rnd(20, 30);
+    const w2 = type === 'log' ? rnd(60, 100) : rnd(22, 36);
+    obstacles.push({ x: W + 20, y: GROUND - h2, w: w2, h: h2, type, onGround: true });
+  }
+
+  function spawnCoin() {
+    const onPlatform = floatPlats.length > 0 && Math.random() < 0.4;
+    let cx = W + rnd(20, 80), cy;
+    if (onPlatform) {
+      const plat = floatPlats[Math.floor(Math.random() * floatPlats.length)];
+      cx = plat.x + plat.w * 0.5; cy = plat.y - 22;
+    } else {
+      cy = rnd(GROUND - 140, GROUND - 40);
+    }
+    coins.push({ x: cx, y: cy, r: 8, collected: false, floatOffset: Math.random() * Math.PI * 2 });
+  }
+
+  function drawObstacle(o) {
+    if (o.type === 'cactus') {
+      ctx.fillStyle = '#2d6a4f';
+      // Main trunk
+      roundRect(ctx, o.x + o.w*0.3, o.y, o.w*0.4, o.h, 5); ctx.fill();
+      // Arms
+      roundRect(ctx, o.x, o.y + o.h*0.3, o.w*0.35, o.h*0.18, 5); ctx.fill();
+      roundRect(ctx, o.x + o.w*0.65, o.y + o.h*0.45, o.w*0.35, o.h*0.18, 5); ctx.fill();
+      // Up bits
+      roundRect(ctx, o.x, o.y + o.h*0.02, o.w*0.2, o.h*0.3, 5); ctx.fill();
+      roundRect(ctx, o.x + o.w*0.8, o.y + o.h*0.15, o.w*0.2, o.h*0.3, 5); ctx.fill();
+      // Highlight
+      ctx.fillStyle = '#40916c'; roundRect(ctx, o.x+o.w*0.36, o.y+2, o.w*0.12, o.h-4, 4); ctx.fill();
+    } else if (o.type === 'rock') {
+      ctx.fillStyle = '#4a5568';
+      ctx.beginPath(); ctx.ellipse(o.x+o.w/2, o.y+o.h*0.6, o.w*0.55, o.h*0.6, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#718096';
+      ctx.beginPath(); ctx.ellipse(o.x+o.w*0.35, o.y+o.h*0.25, o.w*0.3, o.h*0.28, -0.4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.beginPath(); ctx.ellipse(o.x+o.w*0.28, o.y+o.h*0.22, o.w*0.12, o.h*0.1, -0.4, 0, Math.PI*2); ctx.fill();
+    } else { // log
+      ctx.fillStyle = '#92400e';
+      roundRect(ctx, o.x, o.y, o.w, o.h, o.h*0.3); ctx.fill();
+      ctx.fillStyle = '#78350f'; ctx.lineWidth = 1.5;
+      for (let i = 1; i < 4; i++) {
+        ctx.beginPath(); ctx.moveTo(o.x + o.w*(i/4), o.y+4); ctx.lineTo(o.x + o.w*(i/4), o.y+o.h-4); ctx.stroke();
+      }
+      // Wood grain
+      ctx.fillStyle = '#b45309'; roundRect(ctx, o.x+4, o.y+o.h*0.2, o.w-8, o.h*0.2, 3); ctx.fill();
+    }
+  }
+
+  function loop() {
+    frame++;
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+
+    // Parallax bg
+    bgLayers.forEach(layer => {
+      layer.items.forEach(item => {
+        item.x -= layer.spd * (gameSpeed / 3.5);
+        if (item.x < -item.s * 30) item.x = W + item.s * 30;
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = layer.color.replace(/[\d.]+\)$/, '0.15)');
+        ctx.beginPath(); ctx.arc(item.x, item.y, item.s * 15, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    });
+
+    // Ground
+    ctx.fillStyle = '#1c1c28'; ctx.fillRect(0, GROUND, W, H - GROUND);
+    // Ground line
+    ctx.strokeStyle = '#2a2a3d'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
+    // Ground detail dots
+    ctx.fillStyle = '#2d2d42';
+    for (let i = 0; i < 12; i++) ctx.fillRect(((i * 73 + frame * gameSpeed * 0.4) % W), GROUND + 6, 3, 3);
+
+    if (!capy.dead) {
+      distance += gameSpeed * 0.016;
+      arcadeScore = Math.floor(distance * 10 + score * 50);
+      updateArcadeScore();
+      gameSpeed = 3.5 + distance * 0.04; // accelerate
+    }
+
+    // ── Floating platforms ──
+    platTimer++;
+    if (platTimer > Math.max(55, 90 - distance * 0.5)) { spawnPlatform(); platTimer = 0; }
+    for (let i = floatPlats.length - 1; i >= 0; i--) {
+      const p = floatPlats[i];
+      if (!capy.dead) p.x -= gameSpeed;
+      if (p.x + p.w < -20) { floatPlats.splice(i, 1); continue; }
+      ctx.fillStyle = '#2a2a3d';
+      roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.fill();
+      ctx.strokeStyle = '#3d3d5c'; ctx.lineWidth = 1.5;
+      roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.stroke();
+      // Shine
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      roundRect(ctx, p.x+4, p.y+2, p.w-8, 4, 2); ctx.fill();
+    }
+
+    // ── Obstacles ──
+    obstTimer--;
+    if (obstTimer <= 0 && !capy.dead) {
+      spawnObstacle();
+      obstTimer = Math.max(35, 80 - distance * 0.8) + rnd(0, 30);
+    }
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      if (!capy.dead) o.x -= gameSpeed;
+      if (o.x + o.w < -10) { obstacles.splice(i, 1); continue; }
+      drawObstacle(o);
+      // Collision
+      if (!capy.dead && o.x < capy.x + capy.w*0.75 && o.x + o.w > capy.x + capy.w*0.2 &&
+          o.y < capy.y + capy.h*0.9 && o.y + o.h > capy.y + capy.h*0.3) {
+        capy.dead = true;
+        setTimeout(() => {
+          gameOver('💀', `SCORE: ${arcadeScore}`);
+        }, 900);
+      }
+    }
+
+    // ── Coins ──
+    coinTimer--;
+    if (coinTimer <= 0 && !capy.dead) { spawnCoin(); coinTimer = rnd(30, 60); }
+    for (let i = coins.length - 1; i >= 0; i--) {
+      const c = coins[i];
+      if (!capy.dead) c.x -= gameSpeed;
+      if (c.x < -20) { coins.splice(i, 1); continue; }
+      if (c.collected) continue;
+      const floatY = c.y + Math.sin(frame * 0.07 + c.floatOffset) * 4;
+      // Collect
+      if (!capy.dead && Math.hypot(c.x - (capy.x+capy.w*0.6), floatY - (capy.y+capy.h*0.4)) < c.r + 18) {
+        c.collected = true; score++; arcadeScore = Math.floor(distance*10+score*50); updateArcadeScore();
+        // Particle burst
+        for (let p = 0; p < 8; p++) { const a = Math.random()*Math.PI*2; }
+        coins.splice(i, 1); continue;
+      }
+      // Draw coin
+      ctx.save();
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(c.x, floatY, c.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = `bold ${c.r*1.2}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('$', c.x, floatY);
+      ctx.restore();
+    }
+
+    // ── Capy physics ──
+    if (!capy.dead) {
+      // Jump
+      if (jumpQueued) {
+        if (capy.jumps > 0 || capy.coyoteTime > 0) {
+          capy.vy = JUMP_FORCE - (capy.jumps === 1 && !capy.onGround ? 1.5 : 0);
+          capy.jumps--;
+          capy.onGround = false;
+          capy.coyoteTime = 0;
+        }
+        jumpQueued = false;
+      }
+      capy.vy += GRAVITY;
+      capy.y += capy.vy;
+
+      // Ground collision
+      capy.onGround = false;
+      if (capy.y + capy.h >= GROUND) {
+        capy.y = GROUND - capy.h;
+        capy.vy = 0; capy.onGround = true; capy.jumps = 2; capy.coyoteTime = 0;
+      }
+
+      // Platform collision (only from above)
+      for (const p of floatPlats) {
+        if (capy.x + capy.w*0.75 > p.x && capy.x + capy.w*0.2 < p.x + p.w) {
+          if (capy.vy >= 0 && capy.y + capy.h >= p.y && capy.y + capy.h <= p.y + p.h + 15) {
+            capy.y = p.y - capy.h;
+            capy.vy = 0; capy.onGround = true; capy.jumps = 2; capy.coyoteTime = 0;
+          }
+        }
+      }
+
+      if (!capy.onGround && capy.coyoteTime > 0) capy.coyoteTime--;
+      if (capy.onGround) capy.coyoteTime = 8;
+
+      capy.walkFrame = capy.onGround ? capy.walkFrame + gameSpeed : capy.walkFrame;
+    } else {
+      capy.vy += GRAVITY * 0.5;
+      capy.y = Math.min(capy.y + capy.vy, GROUND - capy.h);
+    }
+
+    // Draw shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(capy.x+capy.w/2, GROUND+3, capy.w*0.4, 5, 0, 0, Math.PI*2); ctx.fill();
+
+    // Draw capybara
+    drawCapybara(capy.x, capy.y, capy.w, capy.h, capy.walkFrame, capy.dead);
+
+    // ── Score / info overlay ──
+    ctx.fillStyle = C.text;
+    ctx.font = `bold ${W*0.034}px 'Orbitron', monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`🪙 ${score}`, 14, 32);
+
+    ctx.fillStyle = C.sub;
+    ctx.font = `${W*0.026}px 'Orbitron', monospace`;
+    ctx.fillText(`${(distance*10).toFixed(0)}m`, 14, 52);
+
+    // Speed indicator
+    const spd = Math.min(1, (gameSpeed - 3.5) / 5);
+    ctx.fillStyle = C.bg2; roundRect(ctx, W-70, 14, 56, 8, 4); ctx.fill();
+    ctx.fillStyle = spd > 0.7 ? C.pink : spd > 0.4 ? C.yellow : C.green;
+    if (spd > 0) { roundRect(ctx, W-70, 14, 56*spd, 8, 4); ctx.fill(); }
+    ctx.strokeStyle = C.border; ctx.lineWidth=1; roundRect(ctx,W-70,14,56,8,4); ctx.stroke();
+    ctx.fillStyle=C.sub; ctx.font=`${W*0.022}px 'Orbitron', monospace`; ctx.textAlign='right';
+    ctx.fillText('SPEED', W-8, 14);
+
+    // Double jump indicator
+    for (let j = 0; j < 2; j++) {
+      ctx.fillStyle = j < capy.jumps ? C.accent : C.bg3;
+      ctx.beginPath(); ctx.arc(W - 22 - j*18, 38, 6, 0, Math.PI*2); ctx.fill();
+    }
+
+    if (!capy.dead) arcadeRAF = requestAnimationFrame(loop);
+  }
+
+  arcadeRAF = requestAnimationFrame(loop);
 }
