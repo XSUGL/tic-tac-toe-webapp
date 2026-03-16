@@ -1031,536 +1031,916 @@ id('firstSelect').addEventListener('change',e=>{ firstMode=e.target.value; local
 //  апгрейды между волнами → побеждает последний живой
 // ══════════════════════════════════════════════════════════
 
-const WEAPONS = {
-  sword:   { name:'SWORD',   emoji:'⚔️',  color:'#e2e8f0', dmg:25, speed:4.5, special:'parry',   desc:'Parries attacks' },
-  hammer:  { name:'HAMMER',  emoji:'🔨',  color:'#fb923c', dmg:45, speed:3.2, special:'knockback',desc:'Heavy knockback' },
-  bow:     { name:'BOW',     emoji:'🏹',  color:'#4ade80', dmg:18, speed:5.0, special:'ranged',   desc:'Shoots arrows' },
-  spear:   { name:'SPEAR',   emoji:'🗡️',  color:'#6bdbff', dmg:30, speed:4.0, special:'pierce',   desc:'Pierces through' },
-  bomb:    { name:'BOMB',    emoji:'💣',  color:'#facc15', dmg:60, speed:2.8, special:'explode',  desc:'AOE explosion' },
-  shield:  { name:'SHIELD',  emoji:'🛡️',  color:'#a78bfa', dmg:10, speed:3.5, special:'block',    desc:'Blocks damage' },
-  scythe:  { name:'SCYTHE',  emoji:'⚰️',  color:'#ff6b9d', dmg:35, speed:4.2, special:'lifesteal',desc:'Steals HP' },
-  lightning:{name:'LIGHTNING',emoji:'⚡', color:'#fde047', dmg:40, speed:5.5, special:'chain',    desc:'Chain lightning' },
+
+// ══════════════════════════════════════════════════════════════
+//  ⚔️  WEAPON BALL BATTLE  –  Earclacks-style simulator
+//  - Square arena with gravity + bouncing physics
+//  - Weapons spin around balls, deal damage on contact
+//  - Parry system: weapons clashing cancel each other
+//  - 8 weapons with unique mechanics
+//  - Wave progression + upgrade system
+// ══════════════════════════════════════════════════════════════
+
+const WB = {
+  WEAPONS: {
+    sword:    { name:'SWORD',    emoji:'⚔️',  color:'#e53e3e', hp:100, speed:3.2, dmg:8,  weaponLen:28, weaponW:5,  special:'parry',      desc:'Parries on clash' },
+    hammer:   { name:'HAMMER',   emoji:'🔨',  color:'#dd6b20', hp:120, speed:2.6, dmg:15, weaponLen:24, weaponW:10, special:'noparry',     desc:'Ignores parry' },
+    scythe:   { name:'SCYTHE',   emoji:'🌙',  color:'#553c9a', hp:90,  speed:3.5, dmg:10, weaponLen:30, weaponW:6,  special:'lifesteal',   desc:'Steals HP on hit' },
+    spear:    { name:'SPEAR',    emoji:'🗡️',  color:'#2b6cb0', hp:100, speed:3.0, dmg:9,  weaponLen:36, weaponW:4,  special:'pierce',      desc:'Long reach' },
+    bow:      { name:'BOW',      emoji:'🏹',  color:'#276749', hp:80,  speed:3.8, dmg:7,  weaponLen:20, weaponW:4,  special:'ranged',      desc:'Shoots arrows' },
+    shield:   { name:'SHIELD',   emoji:'🛡️',  color:'#2c7a7b', hp:140, speed:2.4, dmg:5,  weaponLen:22, weaponW:12, special:'block',       desc:'Blocks attacks' },
+    dagger:   { name:'DAGGER',   emoji:'🔪',  color:'#e2e8f0', hp:80,  speed:4.5, dmg:6,  weaponLen:20, weaponW:4,  special:'fast',        desc:'Very fast' },
+    lightning:{ name:'LIGHTNING',emoji:'⚡',  color:'#f6e05e', hp:90,  speed:3.6, dmg:11, weaponLen:26, weaponW:5,  special:'chain',       desc:'Chains on hit' },
+  },
+
+  // Arena
+  arena: { x:0, y:0, w:0, h:0 },
+
+  // Game state
+  balls: [],
+  projectiles: [],
+  particles: [],
+  sparks: [],
+  wave: 1,
+  phase: 'select', // 'select' | 'fight' | 'upgrade' | 'result'
+  playerWeapon: 'sword',
+  upgradeOptions: [],
+  roundWins: [0,0],
+  resultWin: false,
+  slowmo: 0,
+  fightTime: 0,
+  shakeX: 0, shakeY: 0,
+  scores: [0,0],
+  raf: null,
+  selectHover: null,
+  selectConfirmed: false,
 };
 
-const UPGRADES = [
-  { id:'dmg',    name:'POWER UP',   emoji:'💪', desc:'+30% damage',    apply: b => b.dmg   *= 1.3 },
-  { id:'speed',  name:'SPEED UP',   emoji:'⚡', desc:'+20% speed',     apply: b => b.spd   *= 1.2 },
-  { id:'hp',     name:'HEAL',       emoji:'❤️', desc:'+40 HP',         apply: b => { b.hp = Math.min(b.maxHp, b.hp + 40); } },
-  { id:'size',   name:'GROW',       emoji:'🔮', desc:'+20% size',      apply: b => { b.r   *= 1.2; b.dmg *= 1.1; } },
-  { id:'armor',  name:'ARMOR',      emoji:'🛡', desc:'-30% dmg taken', apply: b => b.armor  = (b.armor||0) + 0.3 },
-  { id:'regen',  name:'REGEN',      emoji:'💚', desc:'+2 HP/sec',      apply: b => b.regen  = (b.regen||0) + 2 },
-  { id:'multi',  name:'MULTI-HIT',  emoji:'✨', desc:'Extra projectile',apply: b => b.multi  = (b.multi||0) + 1 },
-  { id:'clone',  name:'CLONE',      emoji:'👥', desc:'Spawn a clone',   apply: null },
-];
-
-let bbState = null;
-
-function openBallBattle() {
-  bbState = null;
-  const ctrl = id('arcadeControls');
-  ctrl.innerHTML = '';
-  showWeaponSelect();
+function wbInit() {
+  const W = canvas.width, H = canvas.height;
+  // Square arena centered, leaving room for HP bars
+  const arenaSize = Math.min(W - 20, H - 120);
+  WB.arena = {
+    x: (W - arenaSize) / 2,
+    y: 60,
+    w: arenaSize,
+    h: arenaSize
+  };
+  WB.phase = 'select';
+  WB.wave = 1;
+  WB.roundWins = [0, 0];
+  WB.selectHover = null;
+  WB.selectConfirmed = false;
+  WB.balls = [];
+  WB.projectiles = [];
+  WB.particles = [];
+  WB.sparks = [];
 }
 
-// ── WEAPON SELECT SCREEN (rendered on canvas) ─────────────
-function showWeaponSelect() {
-  stopArcade();
-  const W = canvas.width, H = canvas.height;
-  const weaponList = Object.keys(WEAPONS);
-  let selectedWeapon = 'sword';
-  let hovered = 'sword';
-
-  // Draw weapon selection UI on canvas
-  function draw() {
-    ctx.fillStyle = C.bg;
-    ctx.fillRect(0, 0, W, H);
-
-    // Title
-    ctx.fillStyle = C.accent;
-    ctx.font = `bold ${W*0.055}px 'Orbitron', monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText('CHOOSE WEAPON', W/2, W*0.12);
-
-    ctx.fillStyle = C.sub;
-    ctx.font = `${W*0.03}px 'Orbitron', monospace`;
-    ctx.fillText('YOUR BALL vs ENEMY BALL', W/2, W*0.18);
-
-    // Grid 4x2
-    const cols = 4, rows = 2;
-    const cellW = (W - 30) / cols;
-    const cellH = cellW * 0.85;
-    const startY = H * 0.22;
-
-    weaponList.forEach((key, i) => {
-      const w = WEAPONS[key];
-      const col = i % cols, row = Math.floor(i / cols);
-      const x = 15 + col * cellW;
-      const y = startY + row * (cellH + 8);
-      const selected = selectedWeapon === key;
-      const hov = hovered === key;
-
-      // Cell bg
-      ctx.fillStyle = selected ? w.color + '33' : hov ? '#ffffff11' : C.bg2;
-      ctx.strokeStyle = selected ? w.color : hov ? '#ffffff44' : C.border;
-      ctx.lineWidth = selected ? 2.5 : 1.5;
-      roundRect(ctx, x, y, cellW - 8, cellH, 10);
-      ctx.fill(); ctx.stroke();
-
-      // Emoji
-      ctx.font = `${cellH * 0.38}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(w.emoji, x + (cellW-8)/2, y + cellH * 0.48);
-
-      // Name
-      ctx.fillStyle = selected ? w.color : C.text;
-      ctx.font = `bold ${cellW * 0.115}px 'Orbitron', monospace`;
-      ctx.fillText(w.name, x + (cellW-8)/2, y + cellH * 0.72);
-
-      // Desc
-      ctx.fillStyle = C.sub;
-      ctx.font = `${cellW * 0.09}px 'DM Sans', sans-serif`;
-      ctx.fillText(w.desc, x + (cellW-8)/2, y + cellH * 0.88);
-    });
-
-    // Stats bars for selected weapon
-    const sw = WEAPONS[selectedWeapon];
-    const barY = startY + rows * (cellH + 8) + 16;
-    const barW = W - 40;
-
-    ctx.fillStyle = C.bg2;
-    ctx.strokeStyle = C.border; ctx.lineWidth = 1;
-    roundRect(ctx, 20, barY, barW, H - barY - 20, 12);
-    ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = sw.color;
-    ctx.font = `bold ${W*0.045}px 'Orbitron', monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(sw.emoji + '  ' + sw.name, W/2, barY + W*0.065);
-
-    // Damage bar
-    const bx = 40, bw = W - 80, bh = 10, by1 = barY + W*0.1;
-    ctx.fillStyle = C.sub; ctx.font = `${W*0.028}px 'Orbitron', monospace`; ctx.textAlign = 'left';
-    ctx.fillText('DMG', bx, by1 - 4);
-    ctx.fillStyle = C.bg3; roundRect(ctx, bx+50, by1-10, bw-50, bh, 5); ctx.fill();
-    ctx.fillStyle = C.pink; roundRect(ctx, bx+50, by1-10, (bw-50)*(sw.dmg/60), bh, 5); ctx.fill();
-
-    ctx.fillText('SPD', bx, by1 + bh + 10);
-    ctx.fillStyle = C.bg3; roundRect(ctx, bx+50, by1+bh, bw-50, bh, 5); ctx.fill();
-    ctx.fillStyle = C.cyan; roundRect(ctx, bx+50, by1+bh, (bw-50)*((sw.speed-2)/4), bh, 5); ctx.fill();
-
-    ctx.fillStyle = C.sub; ctx.textAlign = 'center';
-    ctx.font = `${W*0.03}px 'Orbitron', monospace`;
-    ctx.fillText('SPECIAL: ' + sw.special.toUpperCase(), W/2, by1 + bh * 2 + 28);
-  }
-
-  // Click/touch handling
-  function getCell(ex, ey) {
-    const rect = canvas.getBoundingClientRect();
-    const s = W / rect.width;
-    const cx_ = (ex - rect.left) * s;
-    const cy_ = (ey - rect.top) * s;
-    const cols = 4, rows = 2;
-    const cellW = (W - 30) / cols;
-    const cellH = cellW * 0.85;
-    const startY = H * 0.22;
-    for (let i = 0; i < 8; i++) {
-      const col = i % 4, row = Math.floor(i / 4);
-      const x = 15 + col * cellW, y = startY + row * (cellH + 8);
-      if (cx_ > x && cx_ < x + cellW - 8 && cy_ > y && cy_ < y + cellH)
-        return Object.keys(WEAPONS)[i];
-    }
-    return null;
-  }
-
-  function onMouseMove(e) { const k = getCell(e.clientX, e.clientY); if (k) hovered = k; }
-  function onTap(e) {
-    const src = e.touches ? e.changedTouches[0] : e;
-    const k = getCell(src.clientX, src.clientY);
-    if (k) {
-      if (selectedWeapon === k) {
-        // Double tap / second click = confirm
-        startBallBattle(selectedWeapon);
-        canvas.removeEventListener('click', onTap);
-        canvas.removeEventListener('touchend', onTap);
-        canvas.removeEventListener('mousemove', onMouseMove);
-      } else {
-        selectedWeapon = k; hovered = k;
-      }
-    }
-  }
-
-  canvas.addEventListener('mousemove', onMouseMove);
-  canvas.addEventListener('click', onTap);
-  canvas.addEventListener('touchend', onTap);
-
-  // Start button via controls area
-  const ctrl = id('arcadeControls');
-  ctrl.innerHTML = `<button class="start-btn" id="bbStartBtn" style="max-width:300px;margin:0 auto;display:block">▶ FIGHT!</button>`;
-  id('bbStartBtn').addEventListener('click', () => startBallBattle(selectedWeapon));
-
-  // Animate
-  function loop() {
-    draw();
-    arcadeRAF = requestAnimationFrame(loop);
-  }
-  arcadeRAF = requestAnimationFrame(loop);
+function wbMakeBall(side, weaponKey, wave) {
+  const w = WB.WEAPONS[weaponKey];
+  const A = WB.arena;
+  const waveMult = 1 + (wave - 1) * 0.18;
+  return {
+    // Position
+    x: side === 'left' ? A.x + A.w * 0.25 : A.x + A.w * 0.75,
+    y: A.y + A.h * 0.3,
+    vx: side === 'left' ? 1.5 : -1.5,
+    vy: 0,
+    r: 22,
+    // Stats
+    hp: w.hp * waveMult,
+    maxHp: w.hp * waveMult,
+    dmg: w.dmg * waveMult,
+    spd: w.speed,
+    armor: 0,
+    regen: 0,
+    // Weapon
+    weaponKey,
+    weaponAngle: side === 'left' ? 0 : Math.PI,
+    weaponRotSpeed: side === 'left' ? 3.5 : -3.5, // rad/s
+    weaponLen: w.weaponLen,
+    weaponW: w.weaponW,
+    // Mechanics
+    hitTimer: 0,
+    parryTimer: 0,
+    side,
+    color: w.color,
+    multi: 0,
+    // Arrow cooldown for bow
+    arrowTimer: 0,
+    // Chain counter for lightning
+    chainCount: 0,
+    // Scaling - weapons get stronger on hit
+    hitCount: 0,
+    // Death
+    alive: true,
+    deathTimer: 0,
+  };
 }
 
-// ── MAIN BATTLE ──────────────────────────────────────────
-function startBallBattle(playerWeaponKey) {
-  stopArcade();
-  id('arcadeControls').innerHTML = '';
+// ── PHYSICS ──────────────────────────────────────────────────
+const WB_GRAVITY = 0.38;
+const WB_BOUNCE  = 0.70;
+const WB_FRICTION = 0.989;
+const WB_FLOOR_FRICTION = 0.86;
 
-  const W = canvas.width, H = canvas.height;
-  const FLOOR = H - 30;
-  const GRAVITY = 0.4;
-  const BOUNCE = 0.72;
-  const FRICTION_FLOOR = 0.88;
+function wbPhysics(dt) {
+  const A = WB.arena;
 
-  // Enemy picks random weapon
-  const enemyKeys = Object.keys(WEAPONS).filter(k => k !== playerWeaponKey);
-  const enemyWeaponKey = enemyKeys[Math.floor(Math.random() * enemyKeys.length)];
+  for (const b of WB.balls) {
+    if (!b.alive) continue;
 
-  function makeBall(side, weaponKey) {
-    const w = WEAPONS[weaponKey];
-    return {
-      x: side === 'left' ? W * 0.22 : W * 0.78,
-      y: FLOOR - 40,
-      vx: side === 'left' ? w.speed * 0.6 : -w.speed * 0.6,
-      vy: -w.speed * 1.2,
-      r: 22,
-      hp: 100, maxHp: 100,
-      dmg: w.dmg,
-      spd: w.speed,
-      armor: 0, regen: 0, multi: 0,
-      color: w.color,
-      weapon: weaponKey,
-      emoji: w.emoji,
-      name: w.name,
-      side,
-      hitTimer: 0,    // invincibility after hit
-      attackTimer: 0, // weapon attack cooldown
-      projectiles: [],
-    };
-  }
+    // Gravity
+    b.vy += WB_GRAVITY * dt;
+    // Apply velocity
+    b.x  += b.vx * dt;
+    b.y  += b.vy * dt;
 
-  const playerBall = makeBall('left', playerWeaponKey);
-  const enemyBall  = makeBall('right', enemyWeaponKey);
-  let balls = [playerBall, enemyBall];
+    // Regen
+    if (b.regen > 0) b.hp = Math.min(b.maxHp, b.hp + b.regen * dt * 0.016);
 
-  let projectiles = []; // {x,y,vx,vy,r,dmg,color,owner,type,life}
-  let particles   = [];
-  let wave = 1;
-  let phase = 'fight'; // 'fight' | 'upgrade' | 'result'
-  let upgradeOptions = [];
-  let resultMsg = '';
-  let resultEmoji2 = '';
-  let fightTimer = 0;
-  let slowmo = 0;
+    // Weapon rotation
+    b.weaponAngle += b.weaponRotSpeed * 0.05 * dt;
 
-  function burst(x, y, color, n) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, spd = rnd(2, 8);
-      particles.push({ x, y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, r: rnd(3,7), color, life: 1 });
+    // Arrow timer
+    if (b.arrowTimer > 0) b.arrowTimer -= dt;
+
+    // Hitimer
+    if (b.hitTimer > 0) b.hitTimer -= dt;
+    if (b.parryTimer > 0) b.parryTimer -= dt;
+
+    // Arena walls - bounce
+    if (b.x - b.r < A.x) {
+      b.x = A.x + b.r;
+      b.vx = Math.abs(b.vx) * WB_BOUNCE;
+      wbBounceParticles(b.x, b.y, b.color);
     }
-  }
-
-  function spawnProjectile(owner, tx, ty) {
-    const w = WEAPONS[owner.weapon];
-    const dx = tx - owner.x, dy = ty - owner.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const spd = owner.spd * 1.8;
-    const base = { x: owner.x, y: owner.y, vx: dx/len*spd, vy: dy/len*spd, r: 7, dmg: owner.dmg*0.6, color: owner.color, owner: owner.side, life: 1 };
-    projectiles.push(base);
-    if (owner.multi > 0) {
-      for (let i = 0; i < owner.multi; i++) {
-        const angle = Math.atan2(dy, dx) + (i + 1) * 0.25 * (i % 2 === 0 ? 1 : -1);
-        projectiles.push({ ...base, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd });
-      }
+    if (b.x + b.r > A.x + A.w) {
+      b.x = A.x + A.w - b.r;
+      b.vx = -Math.abs(b.vx) * WB_BOUNCE;
+      wbBounceParticles(b.x, b.y, b.color);
     }
-  }
-
-  function handleWeaponSpecial(attacker, defender, impact) {
-    const w = WEAPONS[attacker.weapon];
-    if (w.special === 'knockback') { const dx=defender.x-attacker.x, dy=defender.y-attacker.y, l=Math.hypot(dx,dy)||1; defender.vx+=dx/l*10; defender.vy+=dy/l*6; }
-    if (w.special === 'lifesteal') { attacker.hp = Math.min(attacker.maxHp, attacker.hp + impact*0.3); }
-    if (w.special === 'explode' && attacker.weapon === 'bomb') { burst(attacker.x, attacker.y, attacker.color, 20); slowmo = 30; }
-    if (w.special === 'chain') { burst(attacker.x, attacker.y, C.yellow, 8); }
-    if (w.special === 'block' && defender.weapon === 'shield' && Math.random() < 0.4) return 0; // blocked
-    if (w.special === 'parry' && defender.weapon === 'sword' && impact > 0 && Math.random() < 0.25) { const tmp = attacker.vx; attacker.vx = defender.vx; defender.vx = tmp; burst(attacker.x, attacker.y, '#fff', 8); return 0; }
-    return 1;
-  }
-
-  // Show upgrade screen
-  function showUpgrades() {
-    phase = 'upgrade';
-    // Pick 3 random upgrades
-    const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
-    upgradeOptions = pool;
-    // Draw is handled in loop
-    // Buttons
-    const ctrl = id('arcadeControls');
-    ctrl.innerHTML = '<div style="font-family:var(--font-hd);font-size:10px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:8px">CHOOSE UPGRADE</div>' +
-      pool.map((u, i) => `<button class="ctrl-btn" id="upg${i}" style="flex:none;width:100%;margin-bottom:8px;border-color:${C.accent};color:${C.text};padding:14px 10px;font-size:13px">${u.emoji} ${u.name} — ${u.desc}</button>`).join('');
-    pool.forEach((u, i) => {
-      id('upg' + i).addEventListener('click', () => {
-        if (u.apply) u.apply(playerBall);
-        else if (u.id === 'clone') { const clone = { ...playerBall, x: playerBall.x - 30, hp: 40, maxHp: 40, r: 16 }; balls.push(clone); }
-        ctrl.innerHTML = '';
-        nextWave();
-      });
-    });
-  }
-
-  function nextWave() {
-    wave++;
-    phase = 'fight';
-    // Respawn/buff enemy
-    const newKey = Object.keys(WEAPONS)[Math.floor(Math.random() * Object.keys(WEAPONS).length)];
-    const newEnemy = makeBall('right', newKey);
-    newEnemy.hp = 100 + wave * 15;
-    newEnemy.maxHp = newEnemy.hp;
-    newEnemy.dmg *= 1 + wave * 0.1;
-    newEnemy.spd *= 1 + wave * 0.03;
-    // Keep only player balls
-    balls = balls.filter(b => b.side === 'left');
-    balls.push(newEnemy);
-    projectiles = [];
-    fightTimer = 0;
-  }
-
-  // Draw upgrade cards on canvas
-  function drawUpgradeScreen() {
-    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = C.accent;
-    ctx.font = `bold ${W*0.055}px 'Orbitron', monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`WAVE ${wave-1} CLEAR!`, W/2, H*0.12);
-    ctx.fillStyle = C.sub;
-    ctx.font = `${W*0.032}px 'Orbitron', monospace`;
-    ctx.fillText('UPGRADE YOUR BALL', W/2, H*0.19);
-
-    upgradeOptions.forEach((u, i) => {
-      const cardH = H * 0.15;
-      const cy = H * 0.27 + i * (cardH + 10);
-      ctx.fillStyle = C.bg2; ctx.strokeStyle = C.border; ctx.lineWidth = 1.5;
-      roundRect(ctx, 20, cy, W-40, cardH, 12); ctx.fill(); ctx.stroke();
-      ctx.font = `${cardH*0.45}px serif`; ctx.textAlign = 'center';
-      ctx.fillText(u.emoji, 55, cy + cardH*0.65);
-      ctx.fillStyle = C.text; ctx.font = `bold ${W*0.04}px 'Orbitron', monospace`; ctx.textAlign = 'left';
-      ctx.fillText(u.name, 90, cy + cardH*0.38);
-      ctx.fillStyle = C.sub; ctx.font = `${W*0.032}px 'DM Sans', sans-serif`;
-      ctx.fillText(u.desc, 90, cy + cardH*0.68);
-    });
-  }
-
-  // ── MAIN LOOP ──────────────────────────────────────────
-  function loop() {
-    const dt = slowmo > 0 ? 0.35 : 1;
-    if (slowmo > 0) slowmo--;
-
-    if (phase === 'upgrade') { drawUpgradeScreen(); arcadeRAF = requestAnimationFrame(loop); return; }
-    if (phase === 'result')  { drawResult(); arcadeRAF = requestAnimationFrame(loop); return; }
-
-    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-
-    // Background grid
-    ctx.strokeStyle = C.bg3; ctx.lineWidth = 1;
-    for (let gx = 0; gx < W; gx += 32) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
-    for (let gy = 0; gy < H; gy += 32) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
-
     // Floor
-    ctx.fillStyle = C.bg3; ctx.fillRect(0, FLOOR, W, H - FLOOR);
-    ctx.strokeStyle = C.border; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, FLOOR); ctx.lineTo(W, FLOOR); ctx.stroke();
+    if (b.y + b.r > A.y + A.h) {
+      b.y = A.y + A.h - b.r;
+      b.vy = -Math.abs(b.vy) * WB_BOUNCE;
+      b.vx *= WB_FLOOR_FRICTION;
+      // Jump back up to keep bouncing
+      if (Math.abs(b.vy) < 2) b.vy = -(3 + Math.random() * 2);
+    }
+    // Ceiling
+    if (b.y - b.r < A.y) {
+      b.y = A.y + b.r;
+      b.vy = Math.abs(b.vy) * WB_BOUNCE;
+    }
 
-    // Wave label
-    ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.032}px 'Orbitron', monospace`; ctx.textAlign = 'center';
-    ctx.fillText(`WAVE ${wave}`, W/2, 28);
-    const enemy = balls.find(b => b.side === 'right');
-    if (enemy) { ctx.fillStyle = C.text; ctx.font = `${W*0.03}px 'Orbitron', monospace`; ctx.fillText(WEAPONS[enemy.weapon].emoji + ' ' + WEAPONS[enemy.weapon].name, W/2, 50); }
+    // Clamp speed
+    const spd = Math.hypot(b.vx, b.vy);
+    const maxSpd = b.spd * 6;
+    if (spd > maxSpd) { b.vx = b.vx/spd*maxSpd; b.vy = b.vy/spd*maxSpd; }
 
-    fightTimer += dt;
+    // Make sure ball keeps moving
+    if (spd < 1.5) {
+      b.vx += (Math.random() - 0.5) * 1.2;
+      b.vy -= 1 + Math.random();
+    }
+  }
 
-    // ── Physics ──
-    for (const b of balls) {
-      if (b.regen > 0 && fightTimer % 60 < 1) b.hp = Math.min(b.maxHp, b.hp + b.regen);
-
-      b.vy += GRAVITY * dt;
-      b.x  += b.vx * dt;
-      b.y  += b.vy * dt;
-      if (b.hitTimer > 0) b.hitTimer--;
-      if (b.attackTimer > 0) b.attackTimer--;
-
-      // Floor bounce
-      if (b.y + b.r >= FLOOR) { b.y = FLOOR - b.r; b.vy *= -BOUNCE; b.vx *= FRICTION_FLOOR; }
-      // Walls
-      if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * BOUNCE; }
-      if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * BOUNCE; }
-      // Ceiling
-      if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.5; }
-
-      // AI: enemy seeks player, player seeks enemy
-      const target = balls.find(ob => ob !== b && ob.side !== b.side);
-      if (target && b.attackTimer <= 0) {
-        const dx = target.x - b.x;
-        // Move toward target
-        if (Math.abs(dx) > b.r * 3) b.vx += Math.sign(dx) * 0.4 * dt;
-        // Jump when on floor
-        if (b.y + b.r >= FLOOR - 2 && Math.abs(dx) < W * 0.5) b.vy = -b.spd * (1.5 + Math.random());
-        // Shoot if ranged
-        if (WEAPONS[b.weapon].special === 'ranged' && Math.hypot(dx, target.y-b.y) > b.r*5) {
-          spawnProjectile(b, target.x, target.y);
-          b.attackTimer = 45;
-        }
-        // Bomb: jump toward and explode on contact
-        if (b.weapon === 'bomb' && Math.hypot(dx, target.y-b.y) < b.r * 3 && b.attackTimer <= 0) {
-          burst(b.x, b.y, b.color, 25);
-          const dmg = b.dmg * (1 - (target.armor||0));
-          if (target.hitTimer <= 0) { target.hp -= dmg; target.hitTimer = 20; burst(target.x, target.y, target.color, 10); }
-          b.attackTimer = 90;
-          slowmo = 20;
+  // Ball vs ball body collision
+  for (let i = 0; i < WB.balls.length; i++) {
+    for (let j = i+1; j < WB.balls.length; j++) {
+      const a = WB.balls[i], b2 = WB.balls[j];
+      if (!a.alive || !b2.alive) continue;
+      const dx = b2.x-a.x, dy = b2.y-a.y;
+      const d = Math.hypot(dx, dy);
+      if (d < a.r + b2.r && d > 0) {
+        const nx = dx/d, ny = dy/d;
+        const overlap = (a.r + b2.r - d) / 2;
+        a.x -= nx*overlap*0.5; a.y -= ny*overlap*0.5;
+        b2.x += nx*overlap*0.5; b2.y += ny*overlap*0.5;
+        const rv = (a.vx-b2.vx)*nx + (a.vy-b2.vy)*ny;
+        if (rv > 0) {
+          a.vx -= nx*rv*0.9; a.vy -= ny*rv*0.9;
+          b2.vx += nx*rv*0.9; b2.vy += ny*rv*0.9;
         }
       }
     }
+  }
 
-    // ── Ball vs Ball collision ──
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i+1; j < balls.length; j++) {
-        const a = balls[i], b2 = balls[j];
-        const dx = b2.x-a.x, dy = b2.y-a.y, d = Math.hypot(dx,dy);
-        if (d < a.r + b2.r && d > 0) {
-          const nx = dx/d, ny = dy/d;
-          const overlap = (a.r+b2.r-d)/2;
-          a.x -= nx*overlap; a.y -= ny*overlap;
-          b2.x += nx*overlap; b2.y += ny*overlap;
-          const rv = (a.vx-b2.vx)*nx + (a.vy-b2.vy)*ny;
-          if (rv > 0) {
-            const imp = rv * 1.1;
-            a.vx -= nx*imp; a.vy -= ny*imp;
-            b2.vx += nx*imp; b2.vy += ny*imp;
-            // Damage
-            if (a.side !== b2.side && Math.abs(rv) > 1.5) {
-              const impact = Math.abs(rv);
-              if (a.hitTimer <= 0) { const dmg = b2.dmg*(1-(a.armor||0))*0.4; const mult=handleWeaponSpecial(b2,a,dmg); if(mult) { a.hp -= dmg*mult; a.hitTimer = 15; burst(a.x, a.y, a.color, 6); } }
-              if (b2.hitTimer <= 0) { const dmg = a.dmg*(1-(b2.armor||0))*0.4; const mult=handleWeaponSpecial(a,b2,dmg); if(mult) { b2.hp -= dmg*mult; b2.hitTimer = 15; burst(b2.x, b2.y, b2.color, 6); } }
-              slowmo = 6;
-            }
+  // Projectile physics
+  for (let i = WB.projectiles.length-1; i >= 0; i--) {
+    const p = WB.projectiles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += WB_GRAVITY * 0.15 * dt;
+    p.life -= 0.015 * dt;
+    if (p.x<A.x||p.x>A.x+A.w||p.y>A.y+A.h||p.life<=0) { WB.projectiles.splice(i,1); continue; }
+    if (p.y < A.y) { p.vy = Math.abs(p.vy); }
+    // Hit
+    for (const b of WB.balls) {
+      if (!b.alive || b.side === p.owner) continue;
+      if (Math.hypot(p.x-b.x, p.y-b.y) < b.r+p.r) {
+        if (b.hitTimer <= 0) {
+          wbDealDamage(b, p.dmg, null);
+        }
+        wbBurst(p.x, p.y, p.color, 6);
+        WB.projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  // Particles
+  for (let i = WB.particles.length-1; i >= 0; i--) {
+    const p = WB.particles[i];
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vy += 0.1*dt; p.vx *= 0.94; p.vy *= 0.97;
+    p.life -= 0.03*dt;
+    if (p.life <= 0) WB.particles.splice(i, 1);
+  }
+
+  // Sparks
+  for (let i = WB.sparks.length-1; i >= 0; i--) {
+    const s = WB.sparks[i];
+    s.x += s.vx*dt; s.y += s.vy*dt; s.life -= 0.06*dt;
+    if (s.life <= 0) WB.sparks.splice(i, 1);
+  }
+
+  // Screen shake decay
+  WB.shakeX *= 0.75; WB.shakeY *= 0.75;
+}
+
+// ── WEAPON COLLISION ─────────────────────────────────────────
+function wbWeaponTip(b) {
+  return {
+    x: b.x + Math.cos(b.weaponAngle) * (b.r + b.weaponLen),
+    y: b.y + Math.sin(b.weaponAngle) * (b.r + b.weaponLen)
+  };
+}
+
+function wbWeaponHitbox(b) {
+  // Line from ball surface to tip
+  const sx = b.x + Math.cos(b.weaponAngle) * b.r;
+  const sy = b.y + Math.sin(b.weaponAngle) * b.r;
+  const ex = b.x + Math.cos(b.weaponAngle) * (b.r + b.weaponLen);
+  const ey = b.y + Math.sin(b.weaponAngle) * (b.r + b.weaponLen);
+  return { sx, sy, ex, ey };
+}
+
+function wbPointSegDist(px, py, ax, ay, bx, by) {
+  const abx = bx-ax, aby = by-ay;
+  const t = Math.max(0, Math.min(1, ((px-ax)*abx+(py-ay)*aby)/(abx*abx+aby*aby+0.001)));
+  const cx = ax+t*abx, cy = ay+t*aby;
+  return Math.hypot(px-cx, py-cy);
+}
+
+function wbCheckWeaponHits(dt) {
+  const alive = WB.balls.filter(b => b.alive);
+  for (let i = 0; i < alive.length; i++) {
+    for (let j = 0; j < alive.length; j++) {
+      if (i === j) continue;
+      const attacker = alive[i];
+      const defender = alive[j];
+      if (attacker.side === defender.side) continue;
+
+      const h = wbWeaponHitbox(attacker);
+      const distToBody = wbPointSegDist(defender.x, defender.y, h.sx, h.sy, h.ex, h.ey);
+      const distToWeapon = wbSegSegDist(h.sx, h.sy, h.ex, h.ey, ...wbWeaponHitbox(defender).sx !== undefined ? [wbWeaponHitbox(defender).sx, wbWeaponHitbox(defender).sy, wbWeaponHitbox(defender).ex, wbWeaponHitbox(defender).ey] : [defender.x, defender.y, defender.x, defender.y]);
+
+      // Weapon-to-weapon parry check
+      const defH = wbWeaponHitbox(defender);
+      const weaponClash = wbSegSegDist(h.sx, h.sy, h.ex, h.ey, defH.sx, defH.sy, defH.ex, defH.ey) < 8;
+
+      if (weaponClash && attacker.parryTimer <= 0 && defender.parryTimer <= 0) {
+        // PARRY - weapons clash
+        const isHammerAtt = attacker.weaponKey === 'hammer';
+        const isHammerDef = defender.weaponKey === 'hammer';
+        if (!isHammerAtt && !isHammerDef) {
+          // Both bounce back
+          attacker.vx *= -0.6; attacker.vy *= -0.5;
+          defender.vx *= -0.6; defender.vy *= -0.5;
+          attacker.parryTimer = 20; defender.parryTimer = 20;
+          wbSparkBurst((attacker.x+defender.x)/2, (attacker.y+defender.y)/2);
+          WB.shakeX = 3; WB.shakeY = 3;
+          continue;
+        }
+      }
+
+      // Weapon hits body
+      if (distToBody < defender.r + attacker.weaponW * 0.5 && attacker.hitTimer <= 0) {
+        const dmg = attacker.dmg * (1 - (defender.armor || 0));
+        wbDealDamage(defender, dmg, attacker);
+        attacker.hitTimer = 18;
+        attacker.hitCount++;
+
+        // Knock defender away from attacker
+        const ang = Math.atan2(defender.y - attacker.y, defender.x - attacker.x);
+        defender.vx += Math.cos(ang) * 3;
+        defender.vy += Math.sin(ang) * 2.5 - 1;
+
+        wbBurst(defender.x, defender.y, defender.color, 8);
+        WB.shakeX += 4; WB.shakeY += 4;
+        WB.slowmo = 8;
+
+        // Weapon specials
+        wbApplySpecial(attacker, defender);
+
+        // Shoot arrow for bow
+        if (attacker.weaponKey === 'bow' && attacker.arrowTimer <= 0) {
+          const target = WB.balls.find(b => b.alive && b.side !== attacker.side);
+          if (target) {
+            const adx = target.x-attacker.x, ady = target.y-attacker.y;
+            const al = Math.hypot(adx,ady)||1;
+            WB.projectiles.push({ x:attacker.x+Math.cos(attacker.weaponAngle)*attacker.r, y:attacker.y+Math.sin(attacker.weaponAngle)*attacker.r, vx:adx/al*7, vy:ady/al*7-1, r:4, dmg:attacker.dmg*0.5, color:'#68d391', owner:attacker.side, life:1 });
+            attacker.arrowTimer = 45;
           }
         }
       }
     }
+  }
+}
 
-    // ── Projectiles ──
-    for (let i = projectiles.length-1; i >= 0; i--) {
-      const p = projectiles[i];
-      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += GRAVITY * dt * 0.3;
-      p.life -= 0.008;
-      if (p.x < 0 || p.x > W || p.y > FLOOR || p.life <= 0) { projectiles.splice(i,1); continue; }
-      // Hit
-      let hit = false;
-      for (const b of balls) {
-        if (b.side === p.owner) continue;
-        if (Math.hypot(p.x-b.x, p.y-b.y) < b.r + p.r) {
-          if (b.hitTimer <= 0) { b.hp -= p.dmg*(1-(b.armor||0)); b.hitTimer = 12; burst(b.x, b.y, b.color, 5); }
-          projectiles.splice(i,1); hit = true; break;
-        }
-      }
-      if (!hit) {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color; ctx.strokeStyle = '#fff9'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-    }
+function wbSegSegDist(ax,ay,bx,by,cx,cy,dx,dy) {
+  // Minimum distance between two segments
+  function ptSeg(px,py,ax,ay,bx,by) {
+    const t = Math.max(0,Math.min(1,((px-ax)*(bx-ax)+(py-ay)*(by-ay))/((bx-ax)**2+(by-ay)**2+0.001)));
+    return Math.hypot(px-(ax+t*(bx-ax)),py-(ay+t*(by-ay)));
+  }
+  return Math.min(ptSeg(ax,ay,cx,cy,dx,dy),ptSeg(bx,by,cx,cy,dx,dy),ptSeg(cx,cy,ax,ay,bx,by),ptSeg(dx,dy,ax,ay,bx,by));
+}
 
-    // ── Draw particles ──
-    for (let i = particles.length-1; i >= 0; i--) {
-      const p = particles[i];
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2); ctx.fill();
-      p.x += p.vx; p.y += p.vy; p.vx *= 0.93; p.vy *= 0.93; p.life -= 0.04;
-      if (p.life <= 0) particles.splice(i,1);
-    }
+function wbApplySpecial(attacker, defender) {
+  const w = attacker.weaponKey;
+  if (w === 'scythe') { attacker.hp = Math.min(attacker.maxHp, attacker.hp + attacker.dmg * 0.4); }
+  if (w === 'hammer') { defender.vx += (defender.x-attacker.x > 0 ? 1:-1) * 5; defender.vy -= 4; }
+  if (w === 'lightning') {
+    attacker.chainCount = (attacker.chainCount||0) + 1;
+    // Chain spark
+    wbSparkBurst(defender.x, defender.y);
+  }
+}
+
+function wbDealDamage(ball, dmg, attacker) {
+  ball.hp -= dmg;
+  if (ball.hp <= 0) {
+    ball.hp = 0;
+    ball.alive = false;
+    wbBurst(ball.x, ball.y, ball.color, 25);
+    WB.shakeX = 8; WB.shakeY = 8;
+  }
+}
+
+function wbBurst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random()*Math.PI*2, spd = rnd(2,8);
+    WB.particles.push({x, y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-1, r:rnd(2,6), color, life:1});
+  }
+}
+
+function wbBounceParticles(x, y, color) {
+  for (let i = 0; i < 4; i++) {
+    const a = Math.random()*Math.PI*2, spd = rnd(1,4);
+    WB.particles.push({x, y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, r:rnd(1,3), color, life:0.6});
+  }
+}
+
+function wbSparkBurst(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const a = Math.random()*Math.PI*2, spd = rnd(3,10);
+    WB.sparks.push({x, y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, life:1});
+  }
+}
+
+// ── BOT AI ────────────────────────────────────────────────────
+function wbBotAI(bot, dt) {
+  const target = WB.balls.find(b => b.alive && b.side !== bot.side);
+  if (!target) return;
+
+  const A = WB.arena;
+  const dx = target.x - bot.x;
+
+  // Move toward player horizontally
+  const moveForce = 0.22 * dt;
+  bot.vx += Math.sign(dx) * moveForce * bot.spd;
+
+  // Jump when near floor
+  const onFloor = bot.y + bot.r > A.y + A.h - 5;
+  if (onFloor) {
+    bot.vy = -(bot.spd * 4 + Math.random() * 2);
+    bot.vx += (Math.random()-0.5) * 2;
+  }
+}
+
+// ── DRAW ──────────────────────────────────────────────────────
+function wbDraw() {
+  const W = canvas.width, H = canvas.height;
+  const A = WB.arena;
+
+  ctx.save();
+  ctx.translate(WB.shakeX * (Math.random()-0.5), WB.shakeY * (Math.random()-0.5));
+
+  // BG
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+
+  // Arena background
+  ctx.fillStyle = '#0d1117';
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
+
+  // Grid
+  ctx.strokeStyle = '#1a1f2e'; ctx.lineWidth = 1;
+  for (let gx = A.x; gx <= A.x+A.w; gx += 32) { ctx.beginPath(); ctx.moveTo(gx, A.y); ctx.lineTo(gx, A.y+A.h); ctx.stroke(); }
+  for (let gy = A.y; gy <= A.y+A.h; gy += 32) { ctx.beginPath(); ctx.moveTo(A.x, gy); ctx.lineTo(A.x+A.w, gy); ctx.stroke(); }
+
+  // Arena border
+  ctx.strokeStyle = '#7c6fff'; ctx.lineWidth = 2.5;
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.stroke();
+  ctx.strokeStyle = '#7c6fff33'; ctx.lineWidth = 10;
+  roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 10); ctx.stroke();
+
+  // Particles
+  for (const p of WB.particles) {
+    ctx.globalAlpha = p.life * 0.9;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Sparks
+  for (const s of WB.sparks) {
+    ctx.globalAlpha = s.life;
+    ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x+s.vx*3, s.y+s.vy*3); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Projectiles
+  for (const p of WB.projectiles) {
+    ctx.save(); ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color; ctx.strokeStyle = '#fff9'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Balls + weapons
+  for (const b of WB.balls) {
+    if (!b.alive) continue;
+    ctx.save();
+
+    // Body shadow
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.ellipse(b.x+2, b.y+3, b.r, b.r*0.5, 0, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
 
-    // ── Draw balls ──
-    for (const b of balls) {
-      if (b.hp <= 0) continue;
-      ctx.save();
-      // Shadow
-      ctx.fillStyle = b.color + '22';
-      ctx.beginPath(); ctx.ellipse(b.x, FLOOR, b.r*0.8, 5, 0, 0, Math.PI*2); ctx.fill();
-      // Hit flash
-      if (b.hitTimer > 0 && b.hitTimer % 4 < 2) { ctx.globalAlpha = 0.5; }
-      // Body
-      const grd = ctx.createRadialGradient(b.x-b.r*.3, b.y-b.r*.3, b.r*.1, b.x, b.y, b.r);
-      grd.addColorStop(0, '#fff9'); grd.addColorStop(0.3, b.color); grd.addColorStop(1, b.color+'66');
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
-      // Weapon emoji
-      ctx.globalAlpha = 1;
-      ctx.font = `${b.r * 1.1}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(WEAPONS[b.weapon].emoji, b.x, b.y);
-      ctx.textBaseline = 'alphabetic';
-      ctx.restore();
+    // Hit flash
+    if (b.hitTimer > 0 && Math.floor(b.hitTimer/3) % 2 === 0) ctx.globalAlpha = 0.4;
+
+    // Weapon (drawn behind ball)
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.weaponAngle);
+    const w = WB.WEAPONS[b.weaponKey];
+    // Weapon trail
+    ctx.strokeStyle = b.color + '55'; ctx.lineWidth = w.weaponW + 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(b.r * 0.8, 0); ctx.lineTo(b.r + w.weaponLen, 0); ctx.stroke();
+    // Weapon body
+    ctx.strokeStyle = w.special === 'block' ? '#a0aec0' : b.color; ctx.lineWidth = w.weaponW;
+    ctx.beginPath(); ctx.moveTo(b.r * 0.8, 0); ctx.lineTo(b.r + w.weaponLen, 0); ctx.stroke();
+    // Tip glow
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.arc(b.r + w.weaponLen, 0, w.weaponW*0.7, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Ball body
+    ctx.globalAlpha = 1;
+    const grd = ctx.createRadialGradient(b.x - b.r*0.35, b.y - b.r*0.35, b.r*0.05, b.x, b.y, b.r);
+    grd.addColorStop(0, '#ffffffcc');
+    grd.addColorStop(0.35, b.color + 'ff');
+    grd.addColorStop(1, b.color + '66');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+
+    // Parry shield rim
+    if (b.parryTimer > 0) {
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 3; ctx.globalAlpha = b.parryTimer/20;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r+5, 0, Math.PI*2); ctx.stroke();
     }
 
-    // ── HP Bars ──
-    const playerAlive = balls.filter(b => b.side === 'left' && b.hp > 0);
-    const enemyAlive  = balls.filter(b => b.side === 'right' && b.hp > 0);
+    // Weapon emoji (small, centered)
+    ctx.globalAlpha = 1;
+    ctx.font = `${b.r * 0.85}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(w.emoji, b.x, b.y + 1);
 
-    function drawHP(label, hpBalls, bx, color) {
-      const bw = W*0.38, bh = 12;
-      const by = FLOOR + 12;
-      const totalHp = hpBalls.reduce((s,b)=>s+b.hp,0);
-      const maxHp   = hpBalls.reduce((s,b)=>s+b.maxHp,0)||1;
-      ctx.fillStyle = C.bg3; roundRect(ctx,bx,by,bw,bh,6); ctx.fill();
-      const ratio = Math.max(0, totalHp/maxHp);
-      ctx.fillStyle = ratio > 0.5 ? C.green : ratio > 0.25 ? C.yellow : C.pink;
-      roundRect(ctx, bx, by, bw*ratio, bh, 6); ctx.fill();
-      ctx.strokeStyle = C.border; ctx.lineWidth=1; roundRect(ctx,bx,by,bw,bh,6); ctx.stroke();
-      ctx.fillStyle = C.text; ctx.font=`bold ${W*0.03}px 'Orbitron', monospace`; ctx.textAlign='left';
-      ctx.fillText(label, bx, by-4);
-      // Emoji
-      ctx.font=`${W*0.03}px serif`; ctx.textAlign='center';
-      ctx.fillText(color, bx+bw+12, by+bh*.5+4);
+    ctx.restore();
+  }
+
+  // ── HP BARS (outside arena) ──
+  const barW = A.w * 0.44;
+  const barH = 14;
+  const barY = A.y + A.h + 12;
+
+  for (let i = 0; i < WB.balls.length; i++) {
+    const b = WB.balls[i];
+    const bx = i === 0 ? A.x : A.x + A.w - barW;
+    const ratio = Math.max(0, b.hp / b.maxHp);
+
+    ctx.fillStyle = C.bg3;
+    roundRect(ctx, bx, barY, barW, barH, 6); ctx.fill();
+
+    ctx.fillStyle = ratio > 0.6 ? C.green : ratio > 0.3 ? C.yellow : C.pink;
+    if (ratio > 0) { roundRect(ctx, bx, barY, barW * ratio, barH, 6); ctx.fill(); }
+
+    ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+    roundRect(ctx, bx, barY, barW, barH, 6); ctx.stroke();
+
+    // HP label
+    ctx.fillStyle = C.text; ctx.textAlign = i === 0 ? 'left' : 'right';
+    ctx.font = `bold ${W*0.027}px 'Orbitron', monospace`;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(WB.WEAPONS[b.weaponKey].name, i===0 ? bx : bx+barW, barY - 2);
+
+    // HP num
+    ctx.fillStyle = C.sub; ctx.textAlign = i === 0 ? 'right' : 'left';
+    ctx.font = `${W*0.024}px 'DM Sans', sans-serif`;
+    ctx.fillText(Math.ceil(b.hp), i===0 ? bx+barW : bx, barY - 2);
+  }
+
+  // Wave + round wins
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.032}px 'Orbitron', monospace`;
+  ctx.fillText(`WAVE ${WB.wave}`, W/2, A.y - 40);
+
+  // Round win dots
+  for (let p = 0; p < 2; p++) {
+    const dotX = p === 0 ? A.x + A.w*0.25 : A.x + A.w*0.75;
+    for (let w2 = 0; w2 < 3; w2++) {
+      const filled = w2 < WB.roundWins[p];
+      ctx.fillStyle = filled ? (p===0 ? C.pink : C.cyan) : C.bg3;
+      ctx.strokeStyle = p===0 ? C.pink : C.cyan; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.arc(dotX + (w2-1)*18, A.y - 16, 6, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
     }
-    drawHP('YOU · ' + WEAPONS[playerWeaponKey].name, playerAlive, 12, WEAPONS[playerWeaponKey].emoji);
-    drawHP('ENEMY · ' + (enemy ? WEAPONS[enemy.weapon].name : ''), enemyAlive, W*0.5, enemy ? WEAPONS[enemy.weapon].emoji : '');
+  }
 
-    // ── Score ──
-    arcadeScore = (wave - 1) * 100 + Math.floor(fightTimer / 60) * 5;
+  ctx.restore();
+}
+
+// ── SELECT SCREEN ─────────────────────────────────────────────
+function wbDrawSelect() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = C.bg; ctx.fillRect(0,0,W,H);
+
+  // Title
+  ctx.fillStyle = C.accent;
+  ctx.font = `bold ${W*0.052}px 'Orbitron', monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('PICK WEAPON', W/2, 18);
+
+  ctx.fillStyle = C.sub;
+  ctx.font = `${W*0.028}px 'Orbitron', monospace`;
+  ctx.fillText('TAP TO SELECT  ·  TAP AGAIN TO FIGHT', W/2, 18 + W*0.065);
+
+  // 4x2 grid
+  const cols = 4;
+  const pad = 10;
+  const cellW = (W - pad*(cols+1)) / cols;
+  const cellH = cellW * 0.88;
+  const startY = 18 + W*0.1;
+
+  Object.entries(WB.WEAPONS).forEach(([key, w], i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const cx = pad + col*(cellW+pad);
+    const cy = startY + row*(cellH+8);
+    const sel = WB.playerWeapon === key;
+    const hov = WB.selectHover === key;
+
+    // Card
+    ctx.fillStyle = sel ? w.color+'2a' : hov ? '#ffffff0e' : C.bg2;
+    ctx.strokeStyle = sel ? w.color : hov ? '#ffffff33' : C.border;
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    roundRect(ctx, cx, cy, cellW, cellH, 10); ctx.fill(); ctx.stroke();
+
+    // Emoji
+    ctx.font = `${cellH*0.38}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(w.emoji, cx+cellW/2, cy+cellH*0.42);
+
+    // Name
+    ctx.fillStyle = sel ? w.color : C.text;
+    ctx.font = `bold ${cellW*0.11}px 'Orbitron', monospace`;
+    ctx.fillText(w.name, cx+cellW/2, cy+cellH*0.73);
+
+    // Desc
+    ctx.fillStyle = C.sub;
+    ctx.font = `${cellW*0.085}px 'DM Sans', sans-serif`;
+    ctx.fillText(w.desc, cx+cellW/2, cy+cellH*0.90);
+  });
+
+  // Selected weapon stats panel
+  const sw = WB.WEAPONS[WB.playerWeapon];
+  const panY = startY + 2*(cellH+8) + 10;
+  const panH = H - panY - 10;
+  if (panH > 40) {
+    ctx.fillStyle = C.bg2; ctx.strokeStyle = sw.color; ctx.lineWidth=1.5;
+    roundRect(ctx, pad, panY, W-pad*2, panH, 10); ctx.fill(); ctx.stroke();
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${W*0.048}px serif`;
+    ctx.fillText(sw.emoji, W/2, panY + panH*0.28);
+
+    ctx.fillStyle = sw.color;
+    ctx.font = `bold ${W*0.042}px 'Orbitron', monospace`;
+    ctx.fillText(sw.name, W/2, panY + panH*0.58);
+
+    ctx.fillStyle = C.sub;
+    ctx.font = `${W*0.03}px 'DM Sans', sans-serif`;
+    ctx.fillText('SPECIAL: ' + sw.special.toUpperCase() + ' · ' + sw.desc.toUpperCase(), W/2, panY + panH*0.82);
+  }
+}
+
+// ── UPGRADE SCREEN ────────────────────────────────────────────
+const WB_UPGRADES = [
+  { id:'dmg',    name:'POWER UP',  emoji:'💪', desc:'+25% damage',     apply: b => b.dmg *= 1.25 },
+  { id:'speed',  name:'SPEED',     emoji:'⚡', desc:'+20% speed',      apply: b => { b.spd *= 1.2; b.weaponRotSpeed *= 1.15; } },
+  { id:'hp',     name:'HEAL',      emoji:'❤️', desc:'Restore 40 HP',   apply: b => { b.hp = Math.min(b.maxHp, b.hp+40); } },
+  { id:'size',   name:'BIG BALL',  emoji:'🔮', desc:'+15% size',       apply: b => { b.r *= 1.15; b.dmg *= 1.1; } },
+  { id:'armor',  name:'ARMOR',     emoji:'🛡', desc:'-25% dmg taken',  apply: b => b.armor = Math.min(0.6, (b.armor||0)+0.25) },
+  { id:'regen',  name:'REGEN',     emoji:'💚', desc:'+1.5 HP/sec',     apply: b => b.regen = (b.regen||0)+1.5 },
+  { id:'weapon', name:'LONG ARM',  emoji:'🗡', desc:'+8 weapon reach', apply: b => b.weaponLen += 8 },
+  { id:'clone',  name:'CLONE',     emoji:'👥', desc:'Add ally ball',   apply: null },
+];
+
+function wbDrawUpgrade() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = C.bg; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = C.green;
+  ctx.font = `bold ${W*0.055}px 'Orbitron', monospace`;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(`WAVE ${WB.wave-1} CLEAR! 🎉`, W/2, 22);
+
+  ctx.fillStyle = C.sub;
+  ctx.font = `${W*0.03}px 'Orbitron', monospace`;
+  ctx.fillText('CHOOSE UPGRADE', W/2, 22+W*0.072);
+}
+
+function wbDrawResult() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = C.bg; ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.font=`${W*0.17}px serif`; ctx.textBaseline='middle';
+  ctx.fillText(WB.resultWin ? '🏆' : '💀', W/2, H*0.3);
+  ctx.fillStyle = WB.resultWin ? C.accent : C.pink;
+  ctx.font=`bold ${W*0.062}px 'Orbitron', monospace`;
+  ctx.fillText(WB.resultWin ? 'VICTORY!' : 'DEFEATED!', W/2, H*0.52);
+  ctx.fillStyle = C.sub;
+  ctx.font=`${W*0.032}px 'Orbitron', monospace`;
+  ctx.fillText(`WAVE ${WB.wave}  ·  SCORE: ${arcadeScore}`, W/2, H*0.65);
+}
+
+// ── MAIN ENTRY ────────────────────────────────────────────────
+function openBallBattle() {
+  stopArcade();
+  id('arcadeControls').innerHTML = '';
+  wbInit();
+  wbRunSelectLoop();
+}
+
+function wbRunSelectLoop() {
+  // Input handling for select
+  function getCellKey(ex, ey) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = (ex - rect.left) * scaleX;
+    const cy = (ey - rect.top) * scaleY;
+    const W = canvas.width;
+    const cols = 4, pad = 10;
+    const cellW = (W - pad*(cols+1)) / cols;
+    const cellH = cellW * 0.88;
+    const startY = 18 + W*0.1;
+    let found = null;
+    Object.keys(WB.WEAPONS).forEach((key, i) => {
+      const col = i%cols, row = Math.floor(i/cols);
+      const bx = pad+col*(cellW+pad), by = startY+row*(cellH+8);
+      if (cx>=bx && cx<=bx+cellW && cy>=by && cy<=by+cellH) found=key;
+    });
+    return found;
+  }
+
+  function onMove(e) { const k = getCellKey(e.clientX, e.clientY); if(k) WB.selectHover=k; }
+  function onTap(e) {
+    const src = e.touches ? e.changedTouches[0] : e;
+    const k = getCellKey(src.clientX, src.clientY);
+    if (!k) return;
+    if (WB.playerWeapon === k) {
+      // Confirmed — start fight
+      cleanup();
+      wbStartFight();
+    } else {
+      WB.playerWeapon = k;
+    }
+  }
+
+  function cleanup() {
+    canvas.removeEventListener('mousemove', onMove);
+    canvas.removeEventListener('click', onTap);
+    canvas.removeEventListener('touchend', onTap);
+    id('arcadeControls').innerHTML = '';
+    if(WB.raf) { cancelAnimationFrame(WB.raf); WB.raf = null; }
+  }
+
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('click', onTap);
+  canvas.addEventListener('touchend', onTap);
+
+  // Fight button
+  id('arcadeControls').innerHTML = `<button class="start-btn" id="wbFightBtn" style="max-width:280px;margin:0 auto;display:block">⚔️ FIGHT!</button>`;
+  id('wbFightBtn').addEventListener('click', () => { cleanup(); wbStartFight(); });
+
+  function loop() {
+    wbDrawSelect();
+    WB.raf = requestAnimationFrame(loop);
+  }
+  WB.raf = requestAnimationFrame(loop);
+}
+
+function wbStartFight() {
+  if (WB.raf) { cancelAnimationFrame(WB.raf); WB.raf = null; }
+  id('arcadeControls').innerHTML = '';
+
+  // Pick enemy weapon
+  const keys = Object.keys(WB.WEAPONS).filter(k => k !== WB.playerWeapon);
+  const enemyWeapon = keys[Math.floor(Math.random() * keys.length)];
+
+  WB.balls = [
+    wbMakeBall('left', WB.playerWeapon, WB.wave),
+    wbMakeBall('right', enemyWeapon, WB.wave),
+  ];
+  WB.projectiles = [];
+  WB.particles = [];
+  WB.sparks = [];
+  WB.slowmo = 0;
+  WB.fightTime = 0;
+  WB.phase = 'fight';
+
+  arcadeGame = { cleanup() {} };
+
+  let last = null;
+  function loop(ts) {
+    if (!last) last = ts;
+    const rawDt = Math.min((ts - last) / 16.67, 2.5);
+    last = ts;
+    const dt = WB.slowmo > 0 ? rawDt * 0.3 : rawDt;
+    if (WB.slowmo > 0) WB.slowmo--;
+
+    WB.fightTime += rawDt;
+    arcadeScore = (WB.wave-1)*200 + Math.floor(WB.fightTime/3);
     updateArcadeScore();
 
-    // ── Check win/lose ──
-    if (playerAlive.length === 0) { phase='result'; resultEmoji2='💀'; resultMsg='DEFEATED!'; return; }
-    if (enemyAlive.length === 0) {
-      burst(W/2, H/2, C.accent, 30);
-      if (wave >= 5) { phase='result'; resultEmoji2='🏆'; resultMsg=`CHAMPION!\nWAVE ${wave} CLEARED`; return; }
-      else showUpgrades();
+    wbPhysics(dt);
+    wbWeaponTick(dt);
+    wbCheckWeaponHits(dt);
+    wbBotAI(WB.balls[1], dt);
+
+    // Check death
+    const pAlive = WB.balls.filter(b=>b.side==='left'&&b.alive);
+    const eAlive = WB.balls.filter(b=>b.side==='right'&&b.alive);
+
+    if (eAlive.length === 0) {
+      WB.roundWins[0]++;
+      cancelAnimationFrame(WB.raf);
+      if (WB.roundWins[0] >= 3) {
+        WB.wave++;
+        if (WB.wave > 5) {
+          WB.resultWin = true; WB.phase='result';
+          wbDrawResult();
+          wbShowResultBtns();
+        } else {
+          WB.roundWins = [0,0];
+          wbDrawResult_wave();
+          setTimeout(() => wbShowUpgrades(), 600);
+        }
+      } else {
+        setTimeout(() => wbStartFight(), 1200);
+      }
+      WB.raf = null;
+      wbDraw(); return;
+    }
+    if (pAlive.length === 0) {
+      WB.roundWins[1]++;
+      cancelAnimationFrame(WB.raf);
+      if (WB.roundWins[1] >= 3) {
+        WB.resultWin = false; WB.phase='result';
+        wbDrawResult();
+        wbShowResultBtns();
+      } else {
+        setTimeout(() => wbStartFight(), 1200);
+      }
+      WB.raf = null;
+      wbDraw(); return;
     }
 
-    arcadeRAF = requestAnimationFrame(loop);
+    wbDraw();
+    WB.raf = requestAnimationFrame(loop);
   }
+  WB.raf = requestAnimationFrame(loop);
+}
 
-  function drawResult() {
-    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    ctx.textAlign = 'center';
-    ctx.font = `${W*0.18}px serif`; ctx.fillText(resultEmoji2, W/2, H*0.3);
-    ctx.fillStyle = C.accent; ctx.font = `bold ${W*0.065}px 'Orbitron', monospace`;
-    resultMsg.split('\n').forEach((line, i) => ctx.fillText(line, W/2, H*0.5 + i*H*0.09));
-    ctx.fillStyle = C.sub; ctx.font = `${W*0.035}px 'Orbitron', monospace`;
-    ctx.fillText(`SCORE: ${arcadeScore}  ·  WAVE: ${wave}`, W/2, H*0.72);
-    // Buttons via ctrl
-    const ctrl = id('arcadeControls');
-    if (!ctrl.querySelector('#bbRetryBtn')) {
-      ctrl.innerHTML = `<button class="start-btn" id="bbRetryBtn" style="max-width:280px;margin:0 auto;display:block">↺ RETRY</button>
-        <button class="ctrl-btn" id="bbMenuBtn" style="width:100%;max-width:280px;margin:8px auto;display:block">← MENU</button>`;
-      id('bbRetryBtn').addEventListener('click', () => { stopArcade(); arcadeScore=0; updateArcadeScore(); openBallBattle(); });
-      id('bbMenuBtn').addEventListener('click', () => { stopArcade(); hide(arcadeScreen); show(hub); });
+function wbWeaponTick(dt) {
+  // Extra: bow fires auto-arrows at enemy
+  for (const b of WB.balls) {
+    if (!b.alive) continue;
+    if (b.weaponKey === 'bow') {
+      b.arrowTimer = (b.arrowTimer || 0);
+      if (b.arrowTimer > 0) b.arrowTimer -= dt;
+      if (b.arrowTimer <= 0) {
+        const target = WB.balls.find(t => t.alive && t.side !== b.side);
+        if (target) {
+          const adx = target.x-b.x, ady = target.y-b.y;
+          const al = Math.hypot(adx,ady)||1;
+          WB.projectiles.push({
+            x: b.x+Math.cos(b.weaponAngle)*(b.r+5),
+            y: b.y+Math.sin(b.weaponAngle)*(b.r+5),
+            vx: adx/al*8, vy: ady/al*8-1,
+            r:5, dmg:b.dmg*0.55, color:'#68d391', owner:b.side, life:1.2
+          });
+          b.arrowTimer = 60 + Math.random()*30;
+          wbBounceParticles(b.x, b.y, '#68d391');
+        }
+      }
     }
   }
+}
 
-  arcadeRAF = requestAnimationFrame(loop);
+function wbDrawResult_wave() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font=`bold ${W*0.07}px 'Orbitron',monospace`;
+  ctx.fillStyle = C.green;
+  ctx.fillText('WAVE CLEAR! ✓', W/2, H*0.45);
+}
+
+function wbShowUpgrades() {
+  if (WB.raf) { cancelAnimationFrame(WB.raf); WB.raf = null; }
+
+  const pool = [...WB_UPGRADES].sort(()=>Math.random()-0.5).slice(0,3);
+  WB.upgradeOptions = pool;
+
+  // Draw upgrade cards in controls area
+  const ctrl = id('arcadeControls');
+  ctrl.innerHTML = `
+    <div style="font-family:var(--font-hd);font-size:10px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:10px">
+      ⭐ WAVE ${WB.wave} — CHOOSE UPGRADE
+    </div>
+    ${pool.map((u,i) => `
+      <button class="ctrl-btn" id="wbUpg${i}" style="width:100%;margin-bottom:8px;border-color:var(--accent);color:var(--text);padding:13px 12px;display:flex;align-items:center;gap:10px;font-size:13px">
+        <span style="font-size:22px">${u.emoji}</span>
+        <span style="text-align:left"><strong style="font-family:var(--font-hd);font-size:11px;letter-spacing:1px">${u.name}</strong><br><span style="font-size:12px;color:var(--sub)">${u.desc}</span></span>
+      </button>`).join('')}`;
+
+  // Loop to show upgrade bg
+  function loop() {
+    wbDrawUpgrade();
+    WB.raf = requestAnimationFrame(loop);
+  }
+  WB.raf = requestAnimationFrame(loop);
+
+  pool.forEach((u, i) => {
+    id('wbUpg'+i).addEventListener('click', () => {
+      // Apply upgrade to player balls
+      const playerBalls = WB.balls.filter(b => b.side==='left');
+      if (u.apply) {
+        playerBalls.forEach(b => u.apply(b));
+      } else if (u.id === 'clone') {
+        const original = WB.balls.find(b=>b.side==='left'&&b.alive);
+        if (original) {
+          const clone = { ...original, x: original.x-40, vx:-1, vy:-2, hp:original.maxHp*0.5, maxHp:original.maxHp*0.5, hitTimer:0 };
+          WB.balls.push(clone);
+        }
+      }
+      cancelAnimationFrame(WB.raf); WB.raf = null;
+      ctrl.innerHTML = '';
+      WB.roundWins = [0,0];
+      setTimeout(() => wbStartFight(), 300);
+    });
+  });
+}
+
+function wbShowResultBtns() {
+  const ctrl = id('arcadeControls');
+  ctrl.innerHTML = `
+    <button class="start-btn" id="wbRetry" style="max-width:280px;margin:0 auto 10px;display:block">↺ RETRY</button>
+    <button class="ctrl-btn" id="wbMenu" style="width:100%;max-width:280px;margin:0 auto;display:block">← MENU</button>`;
+  id('wbRetry').addEventListener('click', () => {
+    stopArcade(); arcadeScore=0; updateArcadeScore(); openBallBattle();
+  });
+  id('wbMenu').addEventListener('click', () => {
+    stopArcade(); hide(arcadeScreen); show(hub);
+  });
 }
