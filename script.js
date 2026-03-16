@@ -1,787 +1,705 @@
-let board = ['', '', '', '', '', '', '', '', ''];
-let currentPlayer = 'X';
-let gameActive = false;
-let gameMode = 'bot';
-let difficulty = 'easy';
-let firstMoveMode = localStorage.getItem('firstMoveMode') || 'player';
-let gameCount = 0;
+/* ═══════════════════════════════════════════════════
+   ARCADE X – script.js
+   Games: Tic-Tac-Toe 3×3 | TTT Ultra 5×5 | Connect 4
+   ═══════════════════════════════════════════════════ */
 
-let scores = {
-    player1: 0,
-    player2: 0,
-    draw: 0
-};
+// ── STATE ──────────────────────────────────────────
+let lang        = localStorage.getItem('lang') || 'en';
+let firstMode   = localStorage.getItem('firstMode') || 'player';
+let currentGame = null; // 'ttt' | 'ttt5' | 'c4'
+let gameMode    = 'bot'; // 'bot' | 'player'
+let difficulty  = 'easy';
+let gameActive  = false;
+let gameCount   = 0;
 
-let currentUser = {
-    isLoggedIn: false,
-    email: '',
-    nickname: '',
-    isGuest: true
-};
+let scores = { p1: 0, p2: 0, draw: 0 };
 
-let language = localStorage.getItem('language') || 'en';
-
-const translations = {
+// ── TRANSLATIONS ───────────────────────────────────
+const T = {
     en: {
-        guestMode: 'Guest Mode',
-        loggedInAs: 'Logged in as',
-        chooseModeTitle: 'Choose Game Mode',
-        vsBotMode: '🤖 vs Bot',
-        twoPlayerMode: '👥 2 Players',
-        startGame: '🎮 Start Game',
-        restart: '🔄 Restart',
-        newGame: '🎯 New Game',
-        playerXTurn: 'Player X Turn',
-        playerOTurn: 'Player O Turn',
-        player1Turn: 'Player 1 Turn',
-        player2Turn: 'Player 2 Turn',
-        botTurn: 'Bot is thinking...',
-        yourTurn: 'Your turn!',
-        gameMode: 'Mode',
-        difficulty: 'Difficulty',
-        botMode: 'vs Bot',
-        playerMode: '2 Players',
-        youWin: 'You Win! 🎉',
-        botWins: 'Bot Wins! 🤖',
-        player1Wins: 'Player 1 Wins! 🎉',
-        player2Wins: 'Player 2 Wins! 🎉',
-        draw: 'Draw! 🤝',
-        gameOver: 'Game Over!',
-        playAgain: 'Play Again',
-        player1: 'Player 1',
-        player2: 'Player 2',
-        bot: 'Bot',
-        draws: 'Draws',
-        account: 'Account',
-        email: 'Email',
-        nickname: 'Nickname',
-        password: 'Password',
-        loginRegister: 'Login / Register',
-        continueGuest: 'Continue as Guest',
-        logout: 'Logout',
-        settings: 'Settings',
-        language: 'Language',
-        firstMove: 'Who goes first',
-        playerFirst: 'Player Always First',
-        alternating: 'Alternating',
-        botFirst: 'Bot Always First',
-        enterCode: 'Enter Code',
-        check: 'Check',
-        languageSaved: 'Language saved!',
-        enterCodePrompt: 'Please enter a code',
-        invalidCode: 'Invalid code',
-        specialTheme: 'Special theme unlocked!'
+        player: 'PLAYER', bot: 'BOT', player2: 'P2', draw: 'DRAW',
+        yourTurn: 'YOUR TURN', botThinking: 'BOT THINKING…',
+        p1Turn: 'PLAYER 1', p2Turn: 'PLAYER 2',
+        youWin: '🎉 YOU WIN!', botWins: '🤖 BOT WINS!',
+        p1Wins: '🎉 P1 WINS!', p2Wins: '🎉 P2 WINS!',
+        drawMsg: '🤝 DRAW!',
     },
     ru: {
-        guestMode: 'Гостевой режим',
-        loggedInAs: 'Вошли как',
-        chooseModeTitle: 'Выберите режим игры',
-        vsBotMode: '🤖 против Бота',
-        twoPlayerMode: '👥 На двоих',
-        startGame: '🎮 Начать игру',
-        restart: '🔄 Перезапуск',
-        newGame: '🎯 Новая игра',
-        playerXTurn: 'Ход игрока X',
-        playerOTurn: 'Ход игрока O',
-        player1Turn: 'Ход игрока 1',
-        player2Turn: 'Ход игрока 2',
-        botTurn: 'Бот думает...',
-        yourTurn: 'Ваш ход!',
-        gameMode: 'Режим',
-        difficulty: 'Сложность',
-        botMode: 'против Бота',
-        playerMode: 'На двоих',
-        youWin: 'Вы выиграли! 🎉',
-        botWins: 'Бот выиграл! 🤖',
-        player1Wins: 'Игрок 1 выиграл! 🎉',
-        player2Wins: 'Игрок 2 выиграл! 🎉',
-        draw: 'Ничья! 🤝',
-        gameOver: 'Игра окончена!',
-        playAgain: 'Играть еще',
-        player1: 'Игрок 1',
-        player2: 'Игрок 2',
-        bot: 'Бот',
-        draws: 'Ничьи',
-        account: 'Аккаунт',
-        email: 'Электронная почта',
-        nickname: 'Никнейм',
-        password: 'Пароль',
-        loginRegister: 'Войти / Регистрация',
-        continueGuest: 'Продолжить как гость',
-        logout: 'Выйти',
-        settings: 'Настройки',
-        language: 'Язык',
-        firstMove: 'Кто ходит первым',
-        playerFirst: 'Игрок всегда первый',
-        alternating: 'По очереди',
-        botFirst: 'Бот всегда первый',
-        enterCode: 'Введите код',
-        check: 'Проверить',
-        languageSaved: 'Язык сохранен!',
-        enterCodePrompt: 'Пожалуйста, введите код',
-        invalidCode: 'Неверный код',
-        specialTheme: 'Специальная тема разблокирована!'
+        player: 'ИГРОК', bot: 'БОТ', player2: 'ИГ2', draw: 'НИЧЬЯ',
+        yourTurn: 'ВАШ ХОД', botThinking: 'БОТ ДУМАЕТ…',
+        p1Turn: 'ИГРОК 1', p2Turn: 'ИГРОК 2',
+        youWin: '🎉 ВЫ ПОБЕДИЛИ!', botWins: '🤖 БОТ ПОБЕДИЛ!',
+        p1Wins: '🎉 ИГРОК 1 ПОБЕДИЛ!', p2Wins: '🎉 ИГРОК 2 ПОБЕДИЛ!',
+        drawMsg: '🤝 НИЧЬЯ!',
     },
     it: {
-        guestMode: 'Modalità ospite',
-        loggedInAs: 'Collegato come',
-        chooseModeTitle: 'Scegli modalità di gioco',
-        vsBotMode: '🤖 vs Bot',
-        twoPlayerMode: '👥 2 Giocatori',
-        startGame: '🎮 Inizia gioco',
-        restart: '🔄 Ricomincia',
-        newGame: '🎯 Nuovo gioco',
-        playerXTurn: 'Turno giocatore X',
-        playerOTurn: 'Turno giocatore O',
-        player1Turn: 'Turno giocatore 1',
-        player2Turn: 'Turno giocatore 2',
-        botTurn: 'Il bot sta pensando...',
-        yourTurn: 'Tocca a te!',
-        gameMode: 'Modalità',
-        difficulty: 'Difficoltà',
-        botMode: 'vs Bot',
-        playerMode: '2 Giocatori',
-        youWin: 'Hai vinto! 🎉',
-        botWins: 'Il bot ha vinto! 🤖',
-        player1Wins: 'Giocatore 1 ha vinto! 🎉',
-        player2Wins: 'Giocatore 2 ha vinto! 🎉',
-        draw: 'Pareggio! 🤝',
-        gameOver: 'Fine partita!',
-        playAgain: 'Gioca ancora',
-        player1: 'Giocatore 1',
-        player2: 'Giocatore 2',
-        bot: 'Bot',
-        draws: 'Pareggi',
-        account: 'Account',
-        email: 'Email',
-        nickname: 'Soprannome',
-        password: 'Password',
-        loginRegister: 'Accedi / Registrati',
-        continueGuest: 'Continua come ospite',
-        logout: 'Esci',
-        settings: 'Impostazioni',
-        language: 'Lingua',
-        firstMove: 'Chi va per primo',
-        playerFirst: 'Giocatore sempre primo',
-        alternating: 'Alternato',
-        botFirst: 'Bot sempre primo',
-        enterCode: 'Inserisci codice',
-        check: 'Verifica',
-        languageSaved: 'Lingua salvata!',
-        enterCodePrompt: 'Per favore, inserisci un codice',
-        invalidCode: 'Codice non valido',
-        specialTheme: 'Tema speciale sbloccato!'
+        player: 'GIOCATORE', bot: 'BOT', player2: 'G2', draw: 'PARI',
+        yourTurn: 'IL TUO TURNO', botThinking: 'BOT STA PENSANDO…',
+        p1Turn: 'GIOCATORE 1', p2Turn: 'GIOCATORE 2',
+        youWin: '🎉 HAI VINTO!', botWins: '🤖 HA VINTO IL BOT!',
+        p1Wins: '🎉 VINCE G1!', p2Wins: '🎉 VINCE G2!',
+        drawMsg: '🤝 PAREGGIO!',
     }
 };
+const t = k => (T[lang] || T.en)[k] || k;
 
-const winningCombinations = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6] // Diagonals
-];
+// ── DOM ────────────────────────────────────────────
+const hub          = id('hub');
+const gameScreen   = id('gameScreen');
+const setup        = id('setup');
+const diffRow      = id('diffRow');
+const turnBar      = id('turnBar');
+const turnSymbol   = id('turnSymbol');
+const turnLabel    = id('turnLabel');
+const ctrlRow      = id('ctrlRow');
+const tttBoard     = id('tttBoard');
+const ttt5Board    = id('ttt5Board');
+const c4Wrap       = id('c4Wrap');
+const c4Arrows     = id('c4Arrows');
+const c4Grid       = id('c4Grid');
+const resultModal  = id('resultModal');
+const resultTitle  = id('resultTitle');
+const resultEmoji  = id('resultEmoji');
 
-function checkWin(player) {
-    for (let combination of winningCombinations) {
-        if (combination.every(index => board[index] === player)) {
-            return { won: true, combination };
-        }
-    }
-    return { won: false };
-}
+function id(x) { return document.getElementById(x); }
+function show(el) { el.classList.remove('hidden'); }
+function hide(el) { el.classList.add('hidden'); }
 
-function checkDraw() {
-    return board.every(cell => cell !== '');
-}
-
-function minimax(newBoard, player, depth = 0, maxDepth = 9) {
-    console.log(`Minimax called: player=${player}, depth=${depth}, board=${newBoard}`);
-
-    // Ограничение глубины рекурсии
-    if (depth >= maxDepth) {
-        console.log('Max depth reached, returning draw score');
-        return { score: 0 };
-    }
-
-    // Проверка выигрыша для X и O
-    const xWin = checkWin('X');
-    const oWin = checkWin('O');
-    if (xWin.won) {
-        console.log('X wins detected');
-        return { score: -100 + depth }; // Увеличенный штраф для X
-    }
-    if (oWin.won) {
-        console.log('O wins detected');
-        return { score: 100 - depth }; // Увеличенная награда для O
-    }
-    if (checkDraw()) {
-        console.log('Draw detected');
-        return { score: 0 };
-    }
-
-    const scores = [];
-    const moves = [];
-    const opponent = player === 'O' ? 'X' : 'O';
-
-    // Собираем пустые клетки
-    const emptyCells = newBoard.reduce((acc, cell, idx) => {
-        if (cell === '') acc.push(idx);
-        return acc;
-    }, []);
-
-    if (emptyCells.length === 0) {
-        console.log('No empty cells, returning draw score');
-        return { score: 0 };
-    }
-
-    console.log(`Empty cells: ${emptyCells}`);
-
-    // Перебор ходов
-    for (let i = 0; i < emptyCells.length; i++) {
-        const index = emptyCells[i];
-        newBoard[index] = player;
-        console.log(`Trying move: index=${index}, player=${player}, board=${newBoard}`);
-        const result = minimax(newBoard, opponent, depth + 1, maxDepth);
-        scores.push(result.score);
-        moves.push(index);
-        newBoard[index] = ''; // Откатываем ход
-        console.log(`Undo move: index=${index}, board=${newBoard}`);
-    }
-
-    if (player === 'O') {
-        const maxScoreIndex = scores.indexOf(Math.max(...scores));
-        console.log(`Best move for O: index=${moves[maxScoreIndex]}, score=${scores[maxScoreIndex]}`);
-        return { score: scores[maxScoreIndex], move: moves[maxScoreIndex] };
-    } else {
-        const minScoreIndex = scores.indexOf(Math.min(...scores));
-        console.log(`Best move for X: index=${moves[minScoreIndex]}, score=${scores[minScoreIndex]}`);
-        return { score: scores[minScoreIndex], move: moves[minScoreIndex] };
-    }
-}
-
-function botMove() {
-    if (gameMode !== 'bot' || !gameActive) {
-        console.log('Bot move skipped: gameMode or gameActive invalid');
-        return;
-    }
-
-    let move;
-    if (difficulty === 'easy') {
-        const emptyCells = board.reduce((acc, cell, idx) => {
-            if (cell === '') acc.push(idx);
-            return acc;
-        }, []);
-        move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        console.log(`Easy bot move: ${move}`);
-    } else if (difficulty === 'medium') {
-        // Проверяем выигрышный ход для O
-        for (let combo of winningCombinations) {
-            const [a, b, c] = combo;
-            if (board[a] === 'O' && board[b] === 'O' && board[c] === '') {
-                move = c;
-                break;
-            }
-            if (board[a] === 'O' && board[c] === 'O' && board[b] === '') {
-                move = b;
-                break;
-            }
-            if (board[b] === 'O' && board[c] === 'O' && board[a] === '') {
-                move = a;
-                break;
-            }
-        }
-        // Проверяем блокировку X
-        if (move === undefined) {
-            for (let combo of winningCombinations) {
-                const [a, b, c] = combo;
-                if (board[a] === 'X' && board[b] === 'X' && board[c] === '') {
-                    move = c;
-                    break;
-                }
-                if (board[a] === 'X' && board[c] === 'X' && board[b] === '') {
-                    move = b;
-                    break;
-                }
-                if (board[b] === 'X' && board[c] === 'X' && board[a] === '') {
-                    move = a;
-                    break;
-                }
-            }
-        }
-        // Если нет выигрыша или блокировки, ходим случайно
-        if (move === undefined) {
-            const emptyCells = board.reduce((acc, cell, idx) => {
-                if (cell === '') acc.push(idx);
-                return acc;
-            }, []);
-            move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        }
-        console.log(`Medium bot move: ${move}`);
-    } else if (difficulty === 'hard') {
-        console.log('Starting hard bot move calculation');
-        // Проверяем немедленный выигрыш для O
-        for (let combo of winningCombinations) {
-            const [a, b, c] = combo;
-            if (board[a] === 'O' && board[b] === 'O' && board[c] === '') {
-                move = c;
-                console.log(`Hard bot immediate win: ${move}`);
-                break;
-            }
-            if (board[a] === 'O' && board[c] === 'O' && board[b] === '') {
-                move = b;
-                console.log(`Hard bot immediate win: ${move}`);
-                break;
-            }
-            if (board[b] === 'O' && board[c] === 'O' && board[a] === '') {
-                move = a;
-                console.log(`Hard bot immediate win: ${move}`);
-                break;
-            }
-        }
-        // Проверяем немедленную блокировку X
-        if (move === undefined) {
-            for (let combo of winningCombinations) {
-                const [a, b, c] = combo;
-                if (board[a] === 'X' && board[b] === 'X' && board[c] === '') {
-                    move = c;
-                    console.log(`Hard bot immediate block: ${move}`);
-                    break;
-                }
-                if (board[a] === 'X' && board[c] === 'X' && board[b] === '') {
-                    move = b;
-                    console.log(`Hard bot immediate block: ${move}`);
-                    break;
-                }
-                if (board[b] === 'X' && board[c] === 'X' && board[a] === '') {
-                    move = a;
-                    console.log(`Hard bot immediate block: ${move}`);
-                    break;
-                }
-            }
-        }
-        // Если нет немедленных ходов, используем minimax
-        if (move === undefined) {
-            const result = minimax([...board], 'O', 0, 9);
-            move = result.move;
-            console.log(`Hard bot minimax move: ${move}, score: ${result.score}`);
-        }
-    }
-
-    if (move !== undefined) {
-        board[move] = currentPlayer;
-        const cell = document.querySelector(`.cell[data-index="${move}"]`);
-        if (!cell) {
-            console.error(`Cell with index ${move} not found`);
-            return;
-        }
-        cell.textContent = currentPlayer;
-        cell.classList.add(currentPlayer.toLowerCase(), 'disabled');
-
-        const winCheck = checkWin(currentPlayer);
-        if (winCheck.won) {
-            winCheck.combination.forEach(index => {
-                document.querySelector(`.cell[data-index="${index}"]`).classList.add('winning');
-            });
-            endGame(currentPlayer === 'X' ? 'youWin' : 'botWins');
-        } else if (checkDraw()) {
-            endGame('draw');
-        } else {
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            updateTurnIndicator();
-            if (gameMode === 'bot' && currentPlayer === 'O') {
-                console.log('Scheduling next bot move');
-                setTimeout(botMove, 500);
-            }
-        }
-    } else {
-        console.error('Bot failed to find a valid move');
-    }
-}
-
-function updateTurnIndicator() {
-    const turnIndicator = document.getElementById('turnIndicator');
-    const turnText = document.getElementById('turnText');
-    if (!turnIndicator || !turnText) {
-        console.error('Turn indicator elements not found');
-        return;
-    }
-    turnIndicator.style.display = 'block';
-    turnIndicator.className = `turn-indicator player-${currentPlayer.toLowerCase()}`;
-    turnText.textContent = gameMode === 'bot' 
-        ? (currentPlayer === 'X' ? translations[language].yourTurn : translations[language].botTurn)
-        : (currentPlayer === 'X' ? translations[language].playerXTurn : translations[language].playerOTurn);
-}
-
-function endGame(result) {
-    gameActive = false;
-    const gameOverModal = document.getElementById('gameOverModal');
-    const gameOverMessage = document.getElementById('gameOverMessage');
-    if (!gameOverModal || !gameOverMessage) {
-        console.error('Game over modal elements not found');
-        return;
-    }
-    gameOverModal.classList.add('show');
-
-    if (result === 'youWin') {
-        scores.player1++;
-        gameOverMessage.textContent = translations[language].youWin;
-    } else if (result === 'botWins') {
-        scores.player2++;
-        gameOverMessage.textContent = translations[language].botWins;
-    } else if (result === 'player1Wins') {
-        scores.player1++;
-        gameOverMessage.textContent = translations[language].player1Wins;
-    } else if (result === 'player2Wins') {
-        scores.player2++;
-        gameOverMessage.textContent = translations[language].player2Wins;
-    } else {
-        scores.draw++;
-        gameOverMessage.textContent = translations[language].draw;
-    }
-
-    updateScores();
-}
-
+// ── SCOREBOARD ─────────────────────────────────────
 function updateScores() {
-    const score1Value = document.getElementById('score1Value');
-    const score2Value = document.getElementById('score2Value');
-    const drawScore = document.getElementById('drawScore');
-    if (!score1Value || !score2Value || !drawScore) {
-        console.error('Score elements not found');
-        return;
-    }
-    score1Value.textContent = scores.player1;
-    score2Value.textContent = scores.player2;
-    drawScore.textContent = scores.draw;
+    id('sVal1').textContent = scores.p1;
+    id('sVal2').textContent = scores.p2;
+    id('sValD').textContent = scores.draw;
+    id('sName1').textContent = t('player');
+    id('sName2').textContent = gameMode === 'bot' ? t('bot') : t('player2');
 }
 
-function updateSettingsUI() {
-    const settingsModal = document.getElementById('settingsModal');
-    if (!settingsModal) {
-        console.error('Settings modal not found');
+// ── TURN INDICATOR ─────────────────────────────────
+let currentPlayer = 'X';
+function updateTurn(isThinking = false) {
+    show(turnBar);
+    turnBar.className = 'turn-bar';
+    if (isThinking) {
+        turnBar.classList.add('thinking');
+        turnSymbol.textContent = '○';
+        turnLabel.textContent = t('botThinking');
         return;
     }
-    const languageSelect = document.getElementById('languageSelect');
-    const firstMoveSelect = document.getElementById('firstMoveSelect');
-    const codeResult = document.getElementById('codeResult');
-
-    if (languageSelect && firstMoveSelect && codeResult) {
-        document.getElementById('settingsTitle').textContent = translations[language].settings;
-        document.getElementById('languageLabel').textContent = translations[language].language;
-        document.getElementById('firstMoveLabel').textContent = translations[language].firstMove;
-        document.getElementById('codeLabel').textContent = translations[language].enterCode;
-        document.getElementById('checkCodeBtn').textContent = translations[language].check;
-
-        languageSelect.value = language;
-        firstMoveSelect.innerHTML = `
-            <option value="player">${translations[language].playerFirst}</option>
-            <option value="alternating">${translations[language].alternating}</option>
-            <option value="bot">${translations[language].botFirst}</option>
-        `;
-        firstMoveSelect.value = firstMoveMode;
+    const isX = currentPlayer === 'X';
+    turnBar.classList.add(isX ? 'x-turn' : 'o-turn');
+    turnSymbol.textContent = isX ? '✕' : '○';
+    if (gameMode === 'bot') {
+        turnLabel.textContent = isX ? t('yourTurn') : t('botThinking');
     } else {
-        console.error('Settings UI elements not found');
+        turnLabel.textContent = isX ? t('p1Turn') : t('p2Turn');
     }
 }
 
-function updateUI() {
-    const elements = {
-        modeTitle: document.getElementById('modeTitle'),
-        botModeBtn: document.getElementById('botModeBtn'),
-        playerModeBtn: document.getElementById('playerModeBtn'),
-        startGameBtn: document.getElementById('startGameBtn'),
-        restartBtn: document.getElementById('restartBtn'),
-        newGameBtn: document.getElementById('newGameBtn'),
-        score1Label: document.getElementById('score1Label'),
-        score2Label: document.getElementById('score2Label'),
-        drawLabel: document.getElementById('drawLabel'),
-        accountModalTitle: document.getElementById('accountModalTitle'),
-        emailLabel: document.getElementById('emailLabel'),
-        nicknameLabel: document.getElementById('nicknameLabel'),
-        passwordLabel: document.getElementById('passwordLabel'),
-        loginBtn: document.getElementById('loginBtn'),
-        guestBtn: document.getElementById('guestBtn'),
-        logoutBtn: document.getElementById('logoutBtn'),
-        gameOverTitle: document.getElementById('gameOverTitle'),
-        playAgainBtn: document.getElementById('playAgainBtn'),
-        newGameFromOverBtn: document.getElementById('newGameFromOverBtn')
-    };
-
-    for (let key in elements) {
-        if (!elements[key]) {
-            console.error(`Element ${key} not found`);
-            return;
-        }
-    }
-
-    elements.modeTitle.textContent = translations[language].chooseModeTitle;
-    elements.botModeBtn.textContent = translations[language].vsBotMode;
-    elements.playerModeBtn.textContent = translations[language].twoPlayerMode;
-    elements.startGameBtn.textContent = translations[language].startGame;
-    elements.restartBtn.textContent = translations[language].restart;
-    elements.newGameBtn.textContent = translations[language].newGame;
-    elements.score1Label.textContent = translations[language].player1;
-    elements.score2Label.textContent = gameMode === 'bot' ? translations[language].bot : translations[language].player2;
-    elements.drawLabel.textContent = translations[language].draws;
-    elements.accountModalTitle.textContent = translations[language].account;
-    elements.emailLabel.textContent = translations[language].email;
-    elements.nicknameLabel.textContent = translations[language].nickname;
-    elements.passwordLabel.textContent = translations[language].password;
-    elements.loginBtn.textContent = translations[language].loginRegister;
-    elements.guestBtn.textContent = translations[language].continueGuest;
-    elements.logoutBtn.textContent = translations[language].logout;
-    elements.gameOverTitle.textContent = translations[language].gameOver;
-    elements.playAgainBtn.textContent = translations[language].playAgain;
-    elements.newGameFromOverBtn.textContent = translations[language].newGame;
-    updateUserInfo();
-    updateSettingsUI();
+// ── WHO GOES FIRST ─────────────────────────────────
+function decideFirst() {
+    if (firstMode === 'player') return 'X';
+    if (firstMode === 'bot')    return 'O';
+    return gameCount % 2 === 0  ? 'X' : 'O';
 }
 
-function updateUserInfo() {
-    const userInfo = document.getElementById('userInfo');
-    const userInfoText = document.getElementById('userInfoText');
-    if (!userInfo || !userInfoText) {
-        console.error('User info elements not found');
-        return;
-    }
-    if (currentUser.isGuest) {
-        userInfo.className = 'user-info guest';
-        userInfoText.textContent = translations[language].guestMode;
-    } else {
-        userInfo.className = 'user-info logged-in';
-        userInfoText.textContent = `${translations[language].loggedInAs} ${currentUser.nickname}`;
-    }
-}
-
-function applySpecialTheme() {
-    if (localStorage.getItem('specialTheme') === 'true') {
-        document.body.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%)';
-    } else {
-        document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    }
-}
-
-document.getElementById('settingsBtn').addEventListener('click', () => {
-    const settingsModal = document.getElementById('settingsModal');
-    if (settingsModal) {
-        settingsModal.classList.add('show');
-        updateSettingsUI();
-    } else {
-        console.error('Settings modal not found');
-    }
-});
-
-document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-    const settingsModal = document.getElementById('settingsModal');
-    if (settingsModal) {
-        settingsModal.classList.remove('show');
-    } else {
-        console.error('Settings modal not found');
-    }
-});
-
-document.getElementById('languageSelect').addEventListener('change', (e) => {
-    language = e.target.value;
-    localStorage.setItem('language', language);
-    updateUI();
-    const codeResult = document.getElementById('codeResult');
-    if (codeResult) {
-        codeResult.textContent = translations[language].languageSaved;
-        codeResult.className = 'code-result success';
-        setTimeout(() => {
-            codeResult.className = 'code-result hidden';
-        }, 2000);
-    }
-});
-
-document.getElementById('firstMoveSelect').addEventListener('change', (e) => {
-    firstMoveMode = e.target.value;
-    localStorage.setItem('firstMoveMode', firstMoveMode);
-});
-
-document.getElementById('checkCodeBtn').addEventListener('click', () => {
-    const code = document.getElementById('codeInput').value;
-    const codeResult = document.getElementById('codeResult');
-    if (!codeResult) {
-        console.error('Code result element not found');
-        return;
-    }
-    if (!code) {
-        codeResult.textContent = translations[language].enterCodePrompt;
-        codeResult.className = 'code-result error';
-    } else if (code === 'GROK2025') {
-        codeResult.textContent = translations[language].specialTheme;
-        codeResult.className = 'code-result special';
-        localStorage.setItem('specialTheme', 'true');
-        applySpecialTheme();
-    } else {
-        codeResult.textContent = translations[language].invalidCode;
-        codeResult.className = 'code-result error';
-    }
-    setTimeout(() => {
-        codeResult.className = 'code-result hidden';
-    }, 2000);
-});
-
-document.getElementById('accountBtn').addEventListener('click', () => {
-    const accountModal = document.getElementById('accountModal');
-    if (!accountModal) {
-        console.error('Account modal not found');
-        return;
-    }
-    accountModal.classList.add('show');
-    if (currentUser.isLoggedIn) {
-        document.getElementById('authForm').style.display = 'none';
-        document.getElementById('accountInfo').style.display = 'block';
-        document.getElementById('userEmail').textContent = currentUser.email;
-        document.getElementById('userNickname').textContent = currentUser.nickname;
-    } else {
-        document.getElementById('authForm').style.display = 'block';
-        document.getElementById('accountInfo').style.display = 'none';
-    }
-});
-
-document.getElementById('closeAccountBtn').addEventListener('click', () => {
-    const accountModal = document.getElementById('accountModal');
-    if (accountModal) {
-        accountModal.classList.remove('show');
-    } else {
-        console.error('Account modal not found');
-    }
-});
-
-document.getElementById('loginBtn').addEventListener('click', () => {
-    const email = document.getElementById('emailInput').value;
-    const nickname = document.getElementById('nicknameInput').value;
-    const password = document.getElementById('passwordInput').value;
-    if (email && nickname && password) {
-        currentUser = { isLoggedIn: true, email, nickname, isGuest: false };
-        updateUserInfo();
-        document.getElementById('accountModal').classList.remove('show');
-    }
-});
-
-document.getElementById('guestBtn').addEventListener('click', () => {
-    currentUser = { isLoggedIn: false, email: '', nickname: '', isGuest: true };
-    updateUserInfo();
-    document.getElementById('accountModal').classList.remove('show');
-});
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    currentUser = { isLoggedIn: false, email: '', nickname: '', isGuest: true };
-    updateUserInfo();
-    document.getElementById('accountModal').classList.remove('show');
-});
-
-document.querySelectorAll('.cell').forEach(cell => {
-    cell.addEventListener('click', () => {
-        if (!gameActive || cell.classList.contains('disabled')) return;
-
-        const index = cell.dataset.index;
-        if (board[index] === '') {
-            board[index] = currentPlayer;
-            cell.textContent = currentPlayer;
-            cell.classList.add(currentPlayer.toLowerCase(), 'disabled');
-
-            const winCheck = checkWin(currentPlayer);
-            if (winCheck.won) {
-                winCheck.combination.forEach(index => {
-                    document.querySelector(`.cell[data-index="${index}"]`).classList.add('winning');
-                });
-                endGame(gameMode === 'bot' ? (currentPlayer === 'X' ? 'youWin' : 'botWins') : (currentPlayer === 'X' ? 'player1Wins' : 'player2Wins'));
-            } else if (checkDraw()) {
-                endGame('draw');
-            } else {
-                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-                updateTurnIndicator();
-                if (gameMode === 'bot' && currentPlayer === 'O') {
-                    console.log('Scheduling bot move after player');
-                    setTimeout(botMove, 500);
-                }
-            }
-        }
+// ── HUB NAVIGATION ─────────────────────────────────
+document.querySelectorAll('.game-card').forEach(card => {
+    card.addEventListener('click', () => {
+        currentGame = card.dataset.game;
+        id('gameName').textContent = {
+            ttt: 'TIC-TAC-TOE', ttt5: 'TTT ULTRA 5×5', c4: 'CONNECT 4'
+        }[currentGame];
+        scores = { p1:0, p2:0, draw:0 };
+        updateScores();
+        // C4 always shows difficulty; ttt5 shows it too
+        show(diffRow);
+        hide(hub);
+        show(gameScreen);
+        hide(turnBar);
+        hide(ctrlRow);
+        showSetup();
     });
 });
 
-document.getElementById('startGameBtn').addEventListener('click', () => {
-    gameActive = true;
-    board = ['', '', '', '', '', '', '', '', ''];
-    currentPlayer = firstMoveMode === 'player' ? 'X' : (firstMoveMode === 'bot' ? 'O' : (gameCount % 2 === 0 ? 'X' : 'O'));
-    gameCount++;
-    document.querySelectorAll('.cell').forEach(cell => {
-        cell.textContent = '';
-        cell.classList.remove('x', 'o', 'disabled', 'winning');
-    });
-    document.getElementById('gameModeSelection').style.display = 'none';
-    document.getElementById('difficultySection').style.display = 'none';
-    document.getElementById('startGameSection').style.display = 'none';
-    document.getElementById('controlButtons').style.display = 'flex';
-    document.getElementById('turnIndicator').style.display = 'block';
-    updateTurnIndicator();
-    if (gameMode === 'bot' && currentPlayer === 'O') {
-        console.log('Starting game with bot first move');
-        setTimeout(botMove, 500);
-    }
-});
-
-document.getElementById('restartBtn').addEventListener('click', () => {
-    board = ['', '', '', '', '', '', '', '', ''];
-    currentPlayer = firstMoveMode === 'player' ? 'X' : (firstMoveMode === 'bot' ? 'O' : (gameCount % 2 === 0 ? 'X' : 'O'));
-    gameActive = true;
-    document.querySelectorAll('.cell').forEach(cell => {
-        cell.textContent = '';
-        cell.classList.remove('x', 'o', 'disabled', 'winning');
-    });
-    document.getElementById('gameOverModal').classList.remove('show');
-    updateTurnIndicator();
-    if (gameMode === 'bot' && currentPlayer === 'O') {
-        console.log('Restarting game with bot first move');
-        setTimeout(botMove, 500);
-    }
-});
-
-document.getElementById('newGameBtn').addEventListener('click', () => {
+id('backBtn').addEventListener('click', () => {
+    hide(gameScreen);
+    show(hub);
     gameActive = false;
-    board = ['', '', '', '', '', '', '', '', ''];
-    document.querySelectorAll('.cell').forEach(cell => {
-        cell.textContent = '';
-        cell.classList.remove('x', 'o', 'disabled', 'winning');
-    });
-    document.getElementById('gameModeSelection').style.display = 'block';
-    document.getElementById('difficultySection').style.display = gameMode === 'bot' ? 'block' : 'none';
-    document.getElementById('startGameSection').style.display = 'block';
-    document.getElementById('controlButtons').style.display = 'none';
-    document.getElementById('turnIndicator').style.display = 'none';
 });
 
-document.getElementById('playAgainBtn').addEventListener('click', () => {
-    document.getElementById('restartBtn').click();
-});
+// ── SETUP ──────────────────────────────────────────
+function showSetup() {
+    show(setup);
+    hide(turnBar);
+    hide(ctrlRow);
+    hideBoardAll();
+}
 
-document.getElementById('newGameFromOverBtn').addEventListener('click', () => {
-    document.getElementById('newGameBtn').click();
-    document.getElementById('gameOverModal').classList.remove('show');
-});
-
-document.querySelectorAll('.mode-btn').forEach(btn => {
+document.querySelectorAll('.pill[data-mode]').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.pill[data-mode]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         gameMode = btn.dataset.mode;
-        document.getElementById('difficultySection').style.display = gameMode === 'bot' ? 'block' : 'none';
-        document.getElementById('score2Label').textContent = gameMode === 'bot' ? translations[language].bot : translations[language].player2;
+        updateScores();
     });
 });
-
-document.querySelectorAll('.difficulty-btn').forEach(btn => {
+document.querySelectorAll('.pill[data-diff]').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.pill[data-diff]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        difficulty = btn.dataset.difficulty;
+        difficulty = btn.dataset.diff;
     });
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing UI');
-    updateUI();
-    applySpecialTheme();
+id('startBtn').addEventListener('click', startGame);
+id('restartBtn').addEventListener('click', restartGame);
+id('newGameBtn').addEventListener('click', showSetup);
+id('playAgainBtn').addEventListener('click', () => { hide(resultModal); restartGame(); });
+id('menuFromResult').addEventListener('click', () => { hide(resultModal); showSetup(); });
+
+// ── START / RESTART ────────────────────────────────
+function startGame() {
+    gameCount++;
+    currentPlayer = decideFirst();
+    gameActive = true;
+    hide(setup);
+    show(ctrlRow);
+    updateScores();
+    if (currentGame === 'ttt')   startTTT();
+    if (currentGame === 'ttt5')  startTTT5();
+    if (currentGame === 'c4')    startC4();
+    updateTurn();
+    if (gameMode === 'bot' && currentPlayer === 'O') scheduleBotMove();
+}
+
+function restartGame() {
+    gameCount++;
+    currentPlayer = decideFirst();
+    gameActive = true;
+    hide(resultModal);
+    hide(setup);
+    show(ctrlRow);
+    if (currentGame === 'ttt')   startTTT();
+    if (currentGame === 'ttt5')  startTTT5();
+    if (currentGame === 'c4')    startC4();
+    updateTurn();
+    if (gameMode === 'bot' && currentPlayer === 'O') scheduleBotMove();
+}
+
+function hideBoardAll() {
+    hide(tttBoard); hide(ttt5Board); hide(c4Wrap);
+}
+
+// ══════════════════════════════════════════════════
+// GAME 1: TIC-TAC-TOE 3×3
+// ══════════════════════════════════════════════════
+let tttState = Array(9).fill('');
+const TTT_WINS = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+];
+
+function startTTT() {
+    tttState = Array(9).fill('');
+    hideBoardAll();
+    show(tttBoard);
+    tttBoard.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.i = i;
+        cell.addEventListener('click', () => onTTTClick(i));
+        tttBoard.appendChild(cell);
+    }
+}
+
+function onTTTClick(i) {
+    if (!gameActive || tttState[i] !== '') return;
+    if (gameMode === 'bot' && currentPlayer === 'O') return;
+    placeTTT(i);
+}
+
+function placeTTT(i) {
+    tttState[i] = currentPlayer;
+    const cell = tttBoard.querySelector(`[data-i="${i}"]`);
+    cell.textContent = currentPlayer === 'X' ? '✕' : '○';
+    cell.classList.add(currentPlayer.toLowerCase(), 'taken', 'pop');
+    const win = checkTTTWin(tttState);
+    if (win) return finishTTT(win);
+    if (tttState.every(c => c)) return endGame('draw');
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    updateTurn();
+    if (gameMode === 'bot' && currentPlayer === 'O') scheduleBotMove();
+}
+
+function checkTTTWin(board) {
+    for (const combo of TTT_WINS) {
+        const [a,b,c] = combo;
+        if (board[a] && board[a] === board[b] && board[a] === board[c])
+            return { winner: board[a], combo };
+    }
+    return null;
+}
+
+function finishTTT(win) {
+    gameActive = false;
+    win.combo.forEach(i => tttBoard.querySelector(`[data-i="${i}"]`).classList.add('winning'));
+    setTimeout(() => endGame(win.winner === 'X' ? 'p1' : 'p2'), 400);
+}
+
+// TTT Bot
+function botMoveTTT() {
+    if (!gameActive || currentPlayer !== 'O' || gameMode !== 'bot') return;
+    updateTurn(true);
+    const move = pickMoveTTT();
+    setTimeout(() => {
+        if (!gameActive) return;
+        placeTTT(move);
+    }, 350);
+}
+
+function pickMoveTTT() {
+    if (difficulty === 'easy') return randomEmpty(tttState);
+    // medium: win or block, else random
+    const win = findImmediate(tttState, 'O');
+    if (win !== -1) return win;
+    if (difficulty === 'medium') {
+        const block = findImmediate(tttState, 'X');
+        if (block !== -1) return block;
+        return randomEmpty(tttState);
+    }
+    // hard: minimax
+    return minimaxTTT(tttState, 'O').move;
+}
+
+function minimaxTTT(board, player) {
+    const win = checkTTTWin(board);
+    if (win) return { score: win.winner === 'O' ? 10 : -10 };
+    const empties = board.map((v,i) => v==='' ? i : -1).filter(i => i >= 0);
+    if (!empties.length) return { score: 0 };
+    const opp = player === 'O' ? 'X' : 'O';
+    const results = empties.map(i => {
+        const nb = [...board]; nb[i] = player;
+        return { move: i, score: minimaxTTT(nb, opp).score };
+    });
+    results.sort((a,b) => player === 'O' ? b.score - a.score : a.score - b.score);
+    return results[0];
+}
+
+// ══════════════════════════════════════════════════
+// GAME 2: TTT ULTRA 5×5 (4-in-a-row wins)
+// ══════════════════════════════════════════════════
+const SIZE5 = 5;
+const WIN5  = 4; // need 4 in a row
+let ttt5State = Array(25).fill('');
+
+function startTTT5() {
+    ttt5State = Array(25).fill('');
+    hideBoardAll();
+    show(ttt5Board);
+    ttt5Board.innerHTML = '';
+    for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.i = i;
+        cell.addEventListener('click', () => onTTT5Click(i));
+        ttt5Board.appendChild(cell);
+    }
+}
+
+function onTTT5Click(i) {
+    if (!gameActive || ttt5State[i] !== '') return;
+    if (gameMode === 'bot' && currentPlayer === 'O') return;
+    placeTTT5(i);
+}
+
+function placeTTT5(i) {
+    ttt5State[i] = currentPlayer;
+    const cell = ttt5Board.querySelector(`[data-i="${i}"]`);
+    cell.textContent = currentPlayer === 'X' ? '✕' : '○';
+    cell.classList.add(currentPlayer.toLowerCase(), 'taken', 'pop');
+    const win = checkTTT5Win(ttt5State);
+    if (win) return finishTTT5(win);
+    if (ttt5State.every(c => c)) return endGame('draw');
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    updateTurn();
+    if (gameMode === 'bot' && currentPlayer === 'O') scheduleBotMove();
+}
+
+function checkTTT5Win(board) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (let r = 0; r < SIZE5; r++) {
+        for (let c = 0; c < SIZE5; c++) {
+            const v = board[r*SIZE5+c];
+            if (!v) continue;
+            for (const [dr,dc] of dirs) {
+                const combo = [];
+                for (let k = 0; k < WIN5; k++) {
+                    const nr = r+dr*k, nc = c+dc*k;
+                    if (nr<0||nr>=SIZE5||nc<0||nc>=SIZE5) break;
+                    if (board[nr*SIZE5+nc] !== v) break;
+                    combo.push(nr*SIZE5+nc);
+                }
+                if (combo.length === WIN5) return { winner: v, combo };
+            }
+        }
+    }
+    return null;
+}
+
+function finishTTT5(win) {
+    gameActive = false;
+    win.combo.forEach(i => ttt5Board.querySelector(`[data-i="${i}"]`).classList.add('winning'));
+    setTimeout(() => endGame(win.winner === 'X' ? 'p1' : 'p2'), 400);
+}
+
+// TTT5 Bot
+function botMoveTTT5() {
+    if (!gameActive || currentPlayer !== 'O') return;
+    updateTurn(true);
+    const move = pickMoveTTT5();
+    setTimeout(() => { if (gameActive) placeTTT5(move); }, 400);
+}
+
+function pickMoveTTT5() {
+    if (difficulty === 'easy') return randomEmpty(ttt5State);
+    // medium/hard: score-based heuristic
+    const win = findImmediateN(ttt5State, 'O', SIZE5, WIN5);
+    if (win !== -1) return win;
+    const block = findImmediateN(ttt5State, 'X', SIZE5, WIN5);
+    if (block !== -1) return block;
+    if (difficulty === 'medium') return randomEmpty(ttt5State);
+    // hard: look for fork / best heuristic
+    return bestHeuristic5(ttt5State);
+}
+
+function bestHeuristic5(board) {
+    const empties = board.map((v,i) => v==='' ? i : -1).filter(x=>x>=0);
+    let bestScore = -Infinity, bestMove = empties[0];
+    for (const i of empties) {
+        const nb = [...board]; nb[i] = 'O';
+        const s = scoreBoard5(nb, 'O') - scoreBoard5(nb, 'X');
+        if (s > bestScore) { bestScore = s; bestMove = i; }
+    }
+    return bestMove;
+}
+
+function scoreBoard5(board, p) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    let total = 0;
+    for (let r = 0; r < SIZE5; r++) {
+        for (let c = 0; c < SIZE5; c++) {
+            for (const [dr,dc] of dirs) {
+                let count = 0, open = 0;
+                for (let k = 0; k < WIN5; k++) {
+                    const nr=r+dr*k, nc=c+dc*k;
+                    if (nr<0||nr>=SIZE5||nc<0||nc>=SIZE5) break;
+                    const v = board[nr*SIZE5+nc];
+                    if (v === p) count++;
+                    else if (v === '') open++;
+                    else { count=-1; break; }
+                }
+                if (count > 0) total += Math.pow(10, count) * (open > 0 ? 1 : 0);
+            }
+        }
+    }
+    return total;
+}
+
+// ══════════════════════════════════════════════════
+// GAME 3: CONNECT 4 (7×6, 4-in-a-row)
+// ══════════════════════════════════════════════════
+const C4_COLS = 7, C4_ROWS = 6, C4_WIN = 4;
+let c4State = []; // c4State[row][col]
+
+function startC4() {
+    c4State = Array.from({length: C4_ROWS}, () => Array(C4_COLS).fill(''));
+    hideBoardAll();
+    show(c4Wrap);
+    // Build arrow buttons
+    c4Arrows.innerHTML = '';
+    for (let c = 0; c < C4_COLS; c++) {
+        const btn = document.createElement('button');
+        btn.className = 'c4-arrow';
+        btn.textContent = '▼';
+        btn.dataset.col = c;
+        btn.addEventListener('click', () => onC4Drop(c));
+        c4Arrows.appendChild(btn);
+    }
+    // Build grid (top-down display)
+    c4Grid.innerHTML = '';
+    for (let r = 0; r < C4_ROWS; r++) {
+        for (let c = 0; c < C4_COLS; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'c4-cell';
+            cell.dataset.r = r;
+            cell.dataset.c = c;
+            c4Grid.appendChild(cell);
+        }
+    }
+}
+
+function onC4Drop(col) {
+    if (!gameActive) return;
+    if (gameMode === 'bot' && currentPlayer === 'O') return;
+    dropC4(col);
+}
+
+function dropC4(col) {
+    const row = lowestEmpty(col);
+    if (row === -1) return; // full column
+    c4State[row][col] = currentPlayer;
+    const cell = c4Grid.querySelector(`[data-r="${row}"][data-c="${col}"]`);
+    cell.classList.add(currentPlayer === 'X' ? 'r' : 'y', 'drop');
+    // Update arrow visibility
+    if (lowestEmpty(col) === -1) {
+        c4Arrows.querySelectorAll('.c4-arrow')[col].disabled = true;
+    }
+    const win = checkC4Win();
+    if (win) return finishC4(win);
+    if (c4State.every(row => row.every(c => c))) return endGame('draw');
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    updateTurn();
+    if (gameMode === 'bot' && currentPlayer === 'O') scheduleBotMove();
+}
+
+function lowestEmpty(col) {
+    for (let r = C4_ROWS - 1; r >= 0; r--) {
+        if (c4State[r][col] === '') return r;
+    }
+    return -1;
+}
+
+function checkC4Win() {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (let r = 0; r < C4_ROWS; r++) {
+        for (let c = 0; c < C4_COLS; c++) {
+            const v = c4State[r][c];
+            if (!v) continue;
+            for (const [dr,dc] of dirs) {
+                const combo = [];
+                for (let k = 0; k < C4_WIN; k++) {
+                    const nr=r+dr*k, nc=c+dc*k;
+                    if (nr<0||nr>=C4_ROWS||nc<0||nc>=C4_COLS) break;
+                    if (c4State[nr][nc] !== v) break;
+                    combo.push([nr,nc]);
+                }
+                if (combo.length === C4_WIN) return { winner: v, combo };
+            }
+        }
+    }
+    return null;
+}
+
+function finishC4(win) {
+    gameActive = false;
+    win.combo.forEach(([r,c]) => {
+        c4Grid.querySelector(`[data-r="${r}"][data-c="${c}"]`).classList.add('winning-c4');
+    });
+    // Disable all arrows
+    c4Arrows.querySelectorAll('.c4-arrow').forEach(btn => btn.disabled = true);
+    setTimeout(() => endGame(win.winner === 'X' ? 'p1' : 'p2'), 500);
+}
+
+// C4 Bot
+function botMoveC4() {
+    if (!gameActive || currentPlayer !== 'O') return;
+    updateTurn(true);
+    const col = pickMoveC4();
+    setTimeout(() => { if (gameActive) dropC4(col); }, 450);
+}
+
+function pickMoveC4() {
+    const cols = availableCols();
+    if (difficulty === 'easy') return cols[Math.floor(Math.random()*cols.length)];
+    // Win check
+    for (const c of cols) {
+        if (simulateC4(c, 'O')) return c;
+    }
+    // Block check
+    for (const c of cols) {
+        if (simulateC4(c, 'X')) return c;
+    }
+    if (difficulty === 'medium') {
+        // Prefer center
+        const center = [3,2,4,1,5,0,6].find(c => cols.includes(c));
+        return center !== undefined ? center : cols[0];
+    }
+    // Hard: alpha-beta minimax depth 5
+    return alphaBetaC4(5).col;
+}
+
+function availableCols() {
+    return Array.from({length:C4_COLS},(_,i)=>i).filter(c => lowestEmpty(c) !== -1);
+}
+
+function simulateC4(col, p) {
+    const r = lowestEmpty(col); if (r === -1) return false;
+    c4State[r][col] = p;
+    const win = !!checkC4Win();
+    c4State[r][col] = '';
+    return win;
+}
+
+function alphaBetaC4(depth) {
+    function score(d, p, alpha, beta) {
+        const cols = availableCols();
+        const win = checkC4Win();
+        if (win) return win.winner === 'O' ? 1000 + d : -(1000 + d);
+        if (!cols.length || d === 0) return heuristicC4();
+        const opp = p === 'O' ? 'X' : 'O';
+        const ordered = [3,2,4,1,5,0,6].filter(c => cols.includes(c));
+        if (p === 'O') {
+            let best = -Infinity;
+            for (const c of ordered) {
+                const r = lowestEmpty(c);
+                c4State[r][c] = p;
+                best = Math.max(best, score(d-1, opp, alpha, beta));
+                c4State[r][c] = '';
+                alpha = Math.max(alpha, best);
+                if (alpha >= beta) break;
+            }
+            return best;
+        } else {
+            let best = Infinity;
+            for (const c of ordered) {
+                const r = lowestEmpty(c);
+                c4State[r][c] = p;
+                best = Math.min(best, score(d-1, opp, alpha, beta));
+                c4State[r][c] = '';
+                beta = Math.min(beta, best);
+                if (alpha >= beta) break;
+            }
+            return best;
+        }
+    }
+    const cols = [3,2,4,1,5,0,6].filter(c => availableCols().includes(c));
+    let bestScore = -Infinity, bestCol = cols[0];
+    for (const c of cols) {
+        const r = lowestEmpty(c);
+        c4State[r][c] = 'O';
+        const s = score(depth-1, 'X', -Infinity, Infinity);
+        c4State[r][c] = '';
+        if (s > bestScore) { bestScore = s; bestCol = c; }
+    }
+    return { col: bestCol };
+}
+
+function heuristicC4() {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    let total = 0;
+    for (let r = 0; r < C4_ROWS; r++) {
+        for (let c = 0; c < C4_COLS; c++) {
+            for (const [dr,dc] of dirs) {
+                let o=0, x=0;
+                for (let k=0; k<C4_WIN; k++) {
+                    const nr=r+dr*k, nc=c+dc*k;
+                    if (nr<0||nr>=C4_ROWS||nc<0||nc>=C4_COLS) break;
+                    const v = c4State[nr][nc];
+                    if (v==='O') o++;
+                    else if (v==='X') x++;
+                }
+                if (x===0 && o>0) total += Math.pow(3,o);
+                if (o===0 && x>0) total -= Math.pow(3,x);
+            }
+        }
+    }
+    return total;
+}
+
+// ══════════════════════════════════════════════════
+// SHARED UTILITIES
+// ══════════════════════════════════════════════════
+function randomEmpty(board) {
+    const e = board.map((v,i)=>v===''?i:-1).filter(i=>i>=0);
+    return e[Math.floor(Math.random()*e.length)];
+}
+
+function findImmediate(board, p) {
+    for (const [a,b,c] of TTT_WINS) {
+        const cells = [board[a],board[b],board[c]];
+        if (cells.filter(v=>v===p).length===2 && cells.includes('')) {
+            return [a,b,c][cells.indexOf('')];
+        }
+    }
+    return -1;
+}
+
+function findImmediateN(board, p, size, win) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (let r=0; r<size; r++) {
+        for (let c=0; c<size; c++) {
+            for (const [dr,dc] of dirs) {
+                const idx=[], vals=[];
+                for (let k=0; k<win; k++) {
+                    const nr=r+dr*k, nc=c+dc*k;
+                    if (nr<0||nr>=size||nc<0||nc>=size) break;
+                    idx.push(nr*size+nc);
+                    vals.push(board[nr*size+nc]);
+                }
+                if (idx.length===win && vals.filter(v=>v===p).length===win-1 && vals.includes('')) {
+                    return idx[vals.indexOf('')];
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+function scheduleBotMove() {
+    updateTurn(true);
+    setTimeout(() => {
+        if (!gameActive) return;
+        if (currentGame === 'ttt')  botMoveTTT();
+        if (currentGame === 'ttt5') botMoveTTT5();
+        if (currentGame === 'c4')   botMoveC4();
+    }, 200);
+}
+
+// ── END GAME ───────────────────────────────────────
+function endGame(result) {
+    gameActive = false;
+    if (result === 'p1') {
+        scores.p1++;
+        resultEmoji.textContent = '🎉';
+        resultTitle.textContent = gameMode === 'bot' ? t('youWin') : t('p1Wins');
+    } else if (result === 'p2') {
+        scores.p2++;
+        resultEmoji.textContent = gameMode === 'bot' ? '🤖' : '🎉';
+        resultTitle.textContent = gameMode === 'bot' ? t('botWins') : t('p2Wins');
+    } else {
+        scores.draw++;
+        resultEmoji.textContent = '🤝';
+        resultTitle.textContent = t('drawMsg');
+    }
+    updateScores();
+    hide(turnBar);
+    setTimeout(() => show(resultModal), 300);
+}
+
+// ── SETTINGS ───────────────────────────────────────
+function openSettings() {
+    id('langSelect').value  = lang;
+    id('firstSelect').value = firstMode;
+    show(id('settingsModal'));
+}
+
+[id('settingsBtn'), id('settingsBtnGame')].forEach(b => b.addEventListener('click', openSettings));
+id('closeSettings').addEventListener('click', () => hide(id('settingsModal')));
+
+id('langSelect').addEventListener('change', e => {
+    lang = e.target.value;
+    localStorage.setItem('lang', lang);
+    updateScores();
+    if (gameActive) updateTurn();
+});
+id('firstSelect').addEventListener('change', e => {
+    firstMode = e.target.value;
+    localStorage.setItem('firstMode', firstMode);
+});
+
+// Close overlay on backdrop click
+[id('settingsModal'), id('resultModal')].forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) hide(m); });
 });

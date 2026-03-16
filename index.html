@@ -3,172 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Advanced Tic-Tac-Toe</title>
+    <title>ARCADE X</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <h1>Tic-Tac-Toe Pro</h1>
-            <div class="header-buttons">
-                <button class="header-btn" id="accountBtn" title="Account">👤</button>
-                <button class="header-btn" id="settingsBtn" title="Settings">⚙️</button>
+    <div class="noise"></div>
+
+    <!-- HUB -->
+    <div class="hub" id="hub">
+        <div class="hub-header">
+            <div class="logo">ARCADE<span>X</span></div>
+            <button class="icon-btn" id="settingsBtn">⚙</button>
+        </div>
+        <p class="hub-sub">SELECT GAME</p>
+        <div class="game-cards">
+            <div class="game-card" data-game="ttt">
+                <div class="card-shine"></div>
+                <div class="card-icon ttt-icon">✕ ○</div>
+                <div class="card-title">TIC-TAC-TOE</div>
+                <div class="card-desc">Classic 3×3</div>
             </div>
-        </header>
-
-        <!-- User Info -->
-        <div class="user-info guest" id="userInfo">
-            <span id="userInfoText">Guest Mode</span>
-        </div>
-
-        <!-- Game Mode Selection -->
-        <div class="game-mode-selection" id="gameModeSelection">
-            <div class="mode-title" id="modeTitle">Choose Game Mode</div>
-            <div class="mode-buttons">
-                <button class="mode-btn active" data-mode="bot" id="botModeBtn">🤖 vs Bot</button>
-                <button class="mode-btn" data-mode="player" id="playerModeBtn">👥 2 Players</button>
+            <div class="game-card" data-game="ttt5">
+                <div class="card-shine"></div>
+                <div class="card-icon ttt5-icon">5×5</div>
+                <div class="card-title">TTT ULTRA</div>
+                <div class="card-desc">5 in a row wins</div>
+                <div class="badge">NEW</div>
+            </div>
+            <div class="game-card" data-game="c4">
+                <div class="card-shine"></div>
+                <div class="card-icon c4-icon">⬤ ⬤ ⬤ ⬤</div>
+                <div class="card-title">CONNECT 4</div>
+                <div class="card-desc">Drop & connect</div>
+                <div class="badge">NEW</div>
             </div>
         </div>
+    </div>
 
-        <!-- Difficulty Selection -->
-        <div class="difficulty-section" id="difficultySection">
-            <div class="difficulty-buttons">
-                <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
-                <button class="difficulty-btn" data-difficulty="medium">Medium</button>
-                <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+    <!-- GAME SCREEN -->
+    <div class="game-screen hidden" id="gameScreen">
+        <div class="topbar">
+            <button class="back-btn" id="backBtn">← MENU</button>
+            <div class="game-name" id="gameName">TIC-TAC-TOE</div>
+            <button class="icon-btn" id="settingsBtnGame">⚙</button>
+        </div>
+
+        <!-- Setup -->
+        <div class="setup" id="setup">
+            <div class="pill-row">
+                <button class="pill active" data-mode="bot" id="botPill">🤖 VS BOT</button>
+                <button class="pill" data-mode="player" id="p2Pill">👥 2 PLAYERS</button>
             </div>
-        </div>
-
-        <!-- Start Game Section -->
-        <div class="start-game-section" id="startGameSection">
-            <button class="start-game-btn" id="startGameBtn">🎮 Start Game</button>
-        </div>
-
-        <!-- Game Info -->
-        <div class="game-info hidden" id="gameInfo">
-            <span id="gameInfoText"></span>
-        </div>
-
-        <!-- Turn Indicator -->
-        <div class="turn-indicator" id="turnIndicator" style="display: none;">
-            <span id="turnText">Player X Turn</span>
-        </div>
-
-        <!-- Game Board -->
-        <div class="game-board" id="gameBoard">
-            <div class="cell disabled" data-index="0"></div>
-            <div class="cell disabled" data-index="1"></div>
-            <div class="cell disabled" data-index="2"></div>
-            <div class="cell disabled" data-index="3"></div>
-            <div class="cell disabled" data-index="4"></div>
-            <div class="cell disabled" data-index="5"></div>
-            <div class="cell disabled" data-index="6"></div>
-            <div class="cell disabled" data-index="7"></div>
-            <div class="cell disabled" data-index="8"></div>
-        </div>
-
-        <!-- Control Buttons -->
-        <div class="control-buttons" id="controlButtons" style="display: none;">
-            <button class="control-btn restart" id="restartBtn">🔄 Restart</button>
-            <button class="control-btn" id="newGameBtn">🎯 New Game</button>
-        </div>
-
-        <!-- Score Display -->
-        <div class="score-display">
-            <div class="score-item">
-                <span class="score-label" id="score1Label">Player 1</span>
-                <span class="score-value" id="score1Value">0</span>
+            <div class="pill-row" id="diffRow">
+                <button class="pill active" data-diff="easy">EASY</button>
+                <button class="pill" data-diff="medium">MEDIUM</button>
+                <button class="pill" data-diff="hard">HARD</button>
             </div>
-            <div class="score-item">
-                <span class="score-label" id="score2Label">Bot</span>
-                <span class="score-value" id="score2Value">0</span>
-            </div>
-            <div class="score-item">
-                <span class="score-label" id="drawLabel">Draw</span>
-                <span class="score-value" id="drawScore">0</span>
+            <button class="start-btn pulse" id="startBtn">▶ START GAME</button>
+        </div>
+
+        <!-- Turn -->
+        <div class="turn-bar hidden" id="turnBar">
+            <div class="turn-player" id="turnPlayer">
+                <span class="turn-symbol" id="turnSymbol">✕</span>
+                <span id="turnLabel">YOUR TURN</span>
             </div>
         </div>
 
-        <!-- Account Modal -->
-        <div class="modal" id="accountModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="accountModalTitle">Account</h2>
-                    <button class="close-btn" id="closeAccountBtn">✕</button>
-                </div>
-                <div id="authForm">
-                    <div class="form-group">
-                        <label for="emailInput" id="emailLabel">Email:</label>
-                        <input type="email" id="emailInput" class="form-input" placeholder="Enter your email">
-                    </div>
-                    <div class="form-group">
-                        <label for="nicknameInput" id="nicknameLabel">Nickname:</label>
-                        <input type="text" id="nicknameInput" class="form-input" placeholder="Enter your nickname">
-                    </div>
-                    <div class="form-group">
-                        <label for="passwordInput" id="passwordLabel">Password:</label>
-                        <input type="password" id="passwordInput" class="form-input" placeholder="Enter your password">
-                    </div>
-                    <button class="form-btn" id="loginBtn">Login / Register</button>
-                    <button class="form-btn secondary" id="guestBtn">Continue as Guest</button>
-                </div>
-                <div id="accountInfo" style="display: none;">
-                    <div class="form-group">
-                        <label>Email:</label>
-                        <div id="userEmail" style="padding: 12px; background: #f7fafc; border-radius: 8px;"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Nickname:</label>
-                        <div id="userNickname" style="padding: 12px; background: #f7fafc; border-radius: 8px;"></div>
-                    </div>
-                    <button class="form-btn" id="logoutBtn" style="background: #e53e3e;">Logout</button>
-                </div>
+        <!-- Score -->
+        <div class="scoreboard">
+            <div class="score-col">
+                <div class="score-label" id="sName1">PLAYER</div>
+                <div class="score-val" id="sVal1">0</div>
+            </div>
+            <div class="score-div"></div>
+            <div class="score-col mid">
+                <div class="score-label">DRAW</div>
+                <div class="score-val" id="sValD">0</div>
+            </div>
+            <div class="score-div"></div>
+            <div class="score-col">
+                <div class="score-label" id="sName2">BOT</div>
+                <div class="score-val" id="sVal2">0</div>
             </div>
         </div>
 
-        <!-- Settings Modal -->
-        <div class="modal" id="settingsModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="settingsTitle">Settings</h2>
-                    <button class="close-btn" id="closeSettingsBtn">✕</button>
-                </div>
-                <div class="setting-group">
-                    <label for="languageSelect" id="languageLabel">Language:</label>
-                    <select id="languageSelect" class="language-select">
-                        <option value="en">English</option>
-                        <option value="ru">Русский</option>
-                        <option value="it">Italiano</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label for="firstMoveSelect" id="firstMoveLabel">Who goes first:</label>
-                    <select id="firstMoveSelect" class="setting-select">
-                        <option value="player">Player Always First</option>
-                        <option value="alternating">Alternating</option>
-                        <option value="bot">Bot Always First</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label for="codeInput" id="codeLabel">Enter Code:</label>
-                    <div class="code-input-group">
-                        <input type="text" id="codeInput" class="code-input" placeholder="Enter special code...">
-                        <button id="checkCodeBtn" class="form-btn">Check</button>
-                    </div>
-                </div>
-                <div class="code-result hidden" id="codeResult"></div>
+        <!-- Boards -->
+        <div class="board-area">
+            <!-- TTT 3x3 -->
+            <div class="ttt-board hidden" id="tttBoard"></div>
+            <!-- TTT 5x5 -->
+            <div class="ttt5-board hidden" id="ttt5Board"></div>
+            <!-- Connect 4 -->
+            <div class="c4-wrap hidden" id="c4Wrap">
+                <div class="c4-arrows" id="c4Arrows"></div>
+                <div class="c4-grid" id="c4Grid"></div>
             </div>
         </div>
 
-        <!-- Game Over Modal -->
-        <div class="modal" id="gameOverModal">
-            <div class="modal-content game-over-content">
-                <h2 class="game-over-title" id="gameOverTitle">Game Over!</h2>
-                <div class="game-over-message" id="gameOverMessage">You win!</div>
-                <button class="form-btn" id="playAgainBtn">Play Again</button>
-                <button class="form-btn secondary" id="newGameFromOverBtn">New Game</button>
+        <!-- Controls -->
+        <div class="ctrl-row hidden" id="ctrlRow">
+            <button class="ctrl-btn accent" id="restartBtn">↺ RESTART</button>
+            <button class="ctrl-btn" id="newGameBtn">⊞ NEW GAME</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="overlay hidden" id="settingsModal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <span>SETTINGS</span>
+                <button class="close-x" id="closeSettings">✕</button>
             </div>
+            <label class="field-label">LANGUAGE</label>
+            <select class="field-select" id="langSelect">
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
+                <option value="it">Italiano</option>
+            </select>
+            <label class="field-label">WHO GOES FIRST (vs Bot)</label>
+            <select class="field-select" id="firstSelect">
+                <option value="player">Player always first</option>
+                <option value="bot">Bot always first</option>
+                <option value="alternating">Alternating</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="overlay hidden" id="resultModal">
+        <div class="modal-box result-box">
+            <div class="result-emoji" id="resultEmoji">🎉</div>
+            <div class="result-title" id="resultTitle">YOU WIN!</div>
+            <button class="start-btn" id="playAgainBtn" style="margin-top:24px">PLAY AGAIN</button>
+            <button class="ctrl-btn" id="menuFromResult">← MENU</button>
         </div>
     </div>
 
