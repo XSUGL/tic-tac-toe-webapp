@@ -409,8 +409,13 @@ function openArcade(g) {
     openBallBattle();
     return;
   }
+  if (g === 'capybara') {
+    hideArcadeOverlay();
+    startCapybara();
+    return;
+  }
   buildControls(g);
-  showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD',capybara:'CAPYBARA RUN'}[g], {bubbles:'TAP TO SHOOT',snake:'TAP TO START',breakout:'MOVE PADDLE',flappy:'TAP TO FLY',capybara:'TAP TO JUMP'}[g]);
+  showArcadeOverlay('🎮', {bubbles:'BUBBLE BATTLE',snake:'SNAKE',breakout:'BREAKOUT',flappy:'FLAPPY BIRD'}[g]||g, {bubbles:'TAP TO SHOOT',snake:'TAP TO START',breakout:'MOVE PADDLE',flappy:'TAP TO FLY'}[g]||'');
 }
 
 function setupCanvas(){
@@ -441,7 +446,7 @@ id('overlayBtn').addEventListener('click', ()=>{
   if(currentGame==='snake')   startSnake();
   if(currentGame==='breakout')startBreakout();
   if(currentGame==='flappy')  startFlappy();
-  if(currentGame==='capybara') startCapybara();
+  if(currentGame==='capybara'){ stopArcade(); startCapybara(); return; }
   if(currentGame==='ballbattle') openBallBattle();
 });
 
@@ -1038,28 +1043,7 @@ function buildControls(game){
       b.addEventListener('mouseup',()=>clearInterval(iv));
     });
   } else if(game==='capybara'){
-    const worldKeys = Object.keys(CAPY_WORLDS);
-    ctrl.innerHTML=`
-      <div style="margin-bottom:8px">
-        <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">SELECT WORLD</div>
-        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">
-          ${worldKeys.map(k=>`<button class="world-pill ${k===capyWorld?'map-active':''}" data-world="${k}" style="flex-shrink:0;background:${k===capyWorld?'var(--accent)':'var(--bg3)'};border:1px solid ${k===capyWorld?'var(--accent)':'var(--border)'};color:${k===capyWorld?'#fff':'var(--sub)'};font-family:var(--font-hd);font-size:10px;letter-spacing:1px;padding:7px 10px;border-radius:20px;cursor:pointer;white-space:nowrap">${CAPY_WORLDS[k].emoji} ${CAPY_WORLDS[k].name}</button>`).join('')}
-        </div>
-      </div>
-      <button class="arc-btn wide" id="capy_jump">🐾 JUMP</button>`;
-    document.querySelectorAll('.world-pill').forEach(btn => {
-      btn.addEventListener('click', () => {
-        capyWorld = btn.dataset.world;
-        localStorage.setItem('capyWorld', capyWorld);
-        document.querySelectorAll('.world-pill').forEach(b => {
-          const active = b.dataset.world === capyWorld;
-          b.style.background = active ? 'var(--accent)' : 'var(--bg3)';
-          b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
-          b.style.color = active ? '#fff' : 'var(--sub)';
-        });
-      });
-    });
-    document.getElementById('capy_jump').addEventListener('click',()=>document.dispatchEvent(new KeyboardEvent('keydown',{code:'Space'})));
+    ctrl.innerHTML='';
   } else if(game==='flappy'){
     ctrl.innerHTML=`<button class="arc-btn wide" id="flapBtn">🐦 TAP / FLAP</button>`;
     id('flapBtn').addEventListener('click',()=>canvas.dispatchEvent(new MouseEvent('click')));
@@ -2155,325 +2139,813 @@ function bbLoop() {
   canvas.addEventListener('touchmove',onM,{passive:true});
 })();
 
+
+// ══════════════════════════════════════════════════════════════════════
+//  🐾  CAPYBARA  –  2 game modes, 5 worlds
+//  MODE 1: RUNNER  – бесконечный бег, прыгай через препятствия
+//  MODE 2: CLIMBER – прыгай вверх по платформам как можно выше
+// ══════════════════════════════════════════════════════════════════════
+
 const CAPY_WORLDS = {
-  grassland: { name:'GRASSLAND', emoji:'🌿', bg:'#0a0a0f', ground:'#1c1c28', groundLine:'#2a2a3d', platColor:'#2a2a3d', platBorder:'#3d3d5c', obstacleCol:'#2d6a4f', coinCol:'#fde047', skyColor:'#0d1020', starColor:'#ffffff20' },
-  jungle:    { name:'JUNGLE',    emoji:'🌴', bg:'#051208', ground:'#0a1e0a', groundLine:'#1a3a1a', platColor:'#0e280e', platBorder:'#1a4a1a', obstacleCol:'#1a5c1a', coinCol:'#ffd700', skyColor:'#060f06', starColor:'#90ee9020' },
-  snow:      { name:'SNOW',      emoji:'❄️', bg:'#060810', ground:'#1a2030', groundLine:'#2a3050', platColor:'#1e2840', platBorder:'#3a4868', obstacleCol:'#2a4060', coinCol:'#60dfff', skyColor:'#08090f', starColor:'#b0c8ff30' },
-  city:      { name:'CITY',      emoji:'🏙', bg:'#08080c', ground:'#181820', groundLine:'#282830', platColor:'#202030', platBorder:'#383848', obstacleCol:'#303040', coinCol:'#ffd700', skyColor:'#080810', starColor:'#ffffff15' },
-  night:     { name:'NIGHT',     emoji:'🌙', bg:'#04040a', ground:'#100c18', groundLine:'#1e1630', platColor:'#160e24', platBorder:'#2a1a3e', obstacleCol:'#553c9a', coinCol:'#e879f9', skyColor:'#04040c', starColor:'#c080ff25' },
+  grassland: {
+    name:'GRASSLAND', emoji:'🌿',
+    bg:'#0a0c08', ground:'#1a2410', groundLine:'#2d3d1a', groundTop:'#3a5020',
+    platColor:'#2a3d18', platBorder:'#4a6828', platTop:'#5a7830',
+    sky: ['#0a0c08','#0d1209'],
+    obstColors: ['#2d6a4f','#1a5c3a'],
+    coinColor:'#fde047', coinBorder:'#ca8a04',
+    decorColor:'#4ade8044', gemColor:'#4ade80',
+    particles: '#4ade80',
+  },
+  snow: {
+    name:'SNOW PEAK', emoji:'❄️',
+    bg:'#060810', ground:'#1a2038', groundLine:'#2a3560', groundTop:'#3a4878',
+    platColor:'#1e2848', platBorder:'#3d5080', platTop:'#4a6090',
+    sky: ['#060810','#080a14'],
+    obstColors: ['#2a4060','#1e3050'],
+    coinColor:'#60dfff', coinBorder:'#0891b2',
+    decorColor:'#60a5fa33', gemColor:'#60a5fa',
+    particles: '#93c5fd',
+  },
+  volcano: {
+    name:'VOLCANO', emoji:'🌋',
+    bg:'#0f0600', ground:'#200a00', groundLine:'#3a1200', groundTop:'#4a1800',
+    platColor:'#2a0e00', platBorder:'#6a2000', platTop:'#8a2800',
+    sky: ['#0f0600','#1a0800'],
+    obstColors: ['#7c2d12','#9a3412'],
+    coinColor:'#fb923c', coinBorder:'#c2410c',
+    decorColor:'#f9731633', gemColor:'#f97316',
+    particles: '#fb923c',
+  },
+  night: {
+    name:'NEON CITY', emoji:'🌙',
+    bg:'#04040c', ground:'#0c0a18', groundLine:'#181428', groundTop:'#201c38',
+    platColor:'#100e1e', platBorder:'#382860', platTop:'#4a3278',
+    sky: ['#04040c','#060410'],
+    obstColors: ['#3b1f6e','#4c2d82'],
+    coinColor:'#e879f9', coinBorder:'#a21caf',
+    decorColor:'#e879f933', gemColor:'#e879f9',
+    particles: '#f0abfc',
+  },
+  desert: {
+    name:'DESERT', emoji:'🏜️',
+    bg:'#0e0a04', ground:'#1e1608', groundLine:'#2e2010', groundTop:'#3e2c14',
+    platColor:'#281c08', platBorder:'#5a3e14', platTop:'#6e4e1e',
+    sky: ['#0e0a04','#120c06'],
+    obstColors: ['#92400e','#78350f'],
+    coinColor:'#fbbf24', coinBorder:'#b45309',
+    decorColor:'#fbbf2433', gemColor:'#fbbf24',
+    particles: '#fde68a',
+  },
 };
+
+let capyMode  = localStorage.getItem('capyMode')  || 'runner';
 let capyWorld = localStorage.getItem('capyWorld') || 'grassland';
 
-function startCapybara(worldKey) {
-  if (worldKey) capyWorld = worldKey;
-  const WORLD = CAPY_WORLDS[capyWorld];
+// ── HUB for capybara ──────────────────────────────────────────────────
+function startCapybara() {
+  stopArcade();
+  setupCanvas();
+  capyBuildUI();
+  capyDrawHub();
+}
+
+function capyBuildUI() {
+  const ctrl = id('arcadeControls');
+  const worldKeys = Object.keys(CAPY_WORLDS);
+  ctrl.innerHTML = `
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">GAME MODE</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="capy-mode" data-m="runner" style="flex:1;font-family:var(--font-hd);font-size:10px;letter-spacing:1px;padding:10px;border-radius:10px;cursor:pointer;border:1.5px solid ${capyMode==='runner'?'var(--accent)':'var(--border)'};background:${capyMode==='runner'?'var(--accent)':'var(--bg3)'};color:${capyMode==='runner'?'#fff':'var(--sub)'}">🏃 RUNNER</button>
+        <button class="capy-mode" data-m="climber" style="flex:1;font-family:var(--font-hd);font-size:10px;letter-spacing:1px;padding:10px;border-radius:10px;cursor:pointer;border:1.5px solid ${capyMode==='climber'?'var(--accent)':'var(--border)'};background:${capyMode==='climber'?'var(--accent)':'var(--bg3)'};color:${capyMode==='climber'?'#fff':'var(--sub)'}">🧗 CLIMBER</button>
+      </div>
+      <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">WORLD</div>
+      <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
+        ${worldKeys.map(k=>{
+          const w=CAPY_WORLDS[k];const sel=k===capyWorld;
+          return `<button class="capy-world" data-w="${k}" style="flex-shrink:0;font-family:var(--font-hd);font-size:9px;letter-spacing:1px;padding:6px 10px;border-radius:16px;cursor:pointer;white-space:nowrap;border:1.5px solid ${sel?w.gemColor:'var(--border)'};background:${sel?w.gemColor+'25':'var(--bg3)'};color:${sel?'#fff':'var(--sub)'}">${w.emoji} ${w.name}</button>`;
+        }).join('')}
+      </div>
+    </div>
+    <button class="start-btn" id="capyPlayBtn" style="max-width:300px;margin:0 auto;display:block">▶ PLAY</button>`;
+
+  ctrl.querySelectorAll('.capy-mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      capyMode = btn.dataset.m;
+      localStorage.setItem('capyMode', capyMode);
+      capyBuildUI();
+    });
+  });
+  ctrl.querySelectorAll('.capy-world').forEach(btn => {
+    btn.addEventListener('click', () => {
+      capyWorld = btn.dataset.w;
+      localStorage.setItem('capyWorld', capyWorld);
+      capyBuildUI();
+    });
+  });
+  id('capyPlayBtn').addEventListener('click', () => {
+    if (capyMode === 'runner') capyStartRunner();
+    else capyStartClimber();
+  });
+}
+
+function capyDrawHub() {
   const W = canvas.width, H = canvas.height;
-  const GRAVITY = 0.55, JUMP_FORCE = -13, MOVE_SPD = 4.5;
-  const GROUND = H - 45;
+  const WORLD = CAPY_WORLDS[capyWorld];
+  ctx.fillStyle = WORLD.bg; ctx.fillRect(0,0,W,H);
 
-  let score = 0, distance = 0;
-  let gameSpeed = 3.5;
-  let frame = 0;
+  // Stars
+  for (let i=0;i<40;i++) {
+    ctx.fillStyle='#ffffff'; ctx.globalAlpha=(Math.sin(i*1.7)+1)*0.1+0.05;
+    ctx.beginPath(); ctx.arc(i*W/40+15, 30+Math.sin(i*0.9)*50, 1, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
 
-  // Capy
+  // Ground
+  ctx.fillStyle=WORLD.ground; ctx.fillRect(0, H-60, W, 60);
+  ctx.fillStyle=WORLD.groundTop; ctx.fillRect(0, H-62, W, 6);
+
+  // Title
+  ctx.fillStyle=WORLD.gemColor;
+  ctx.font=`bold ${W*0.065}px 'Orbitron',monospace`;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('CAPYBARA', W/2, H*0.08);
+  ctx.fillStyle=C.sub;
+  ctx.font=`${W*0.028}px 'Orbitron',monospace`;
+  ctx.fillText(capyMode==='runner' ? '🏃 ENDLESS RUNNER' : '🧗 CLIMB TO THE TOP', W/2, H*0.08+W*0.075);
+
+  // Capybara preview
+  const img = IMGS['capy'];
+  if (img && img.complete && img.naturalWidth>0) {
+    ctx.drawImage(img, W/2-50, H*0.32, 100, 72);
+  } else {
+    ctx.fillStyle=WORLD.gemColor+'88';
+    ctx.beginPath(); ctx.arc(W/2, H*0.42, 40, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Hi-score
+  const hi = parseInt(localStorage.getItem(`capy_hi_${capyMode}_${capyWorld}`)||'0');
+  if (hi > 0) {
+    ctx.fillStyle=WORLD.coinColor;
+    ctx.font=`bold ${W*0.032}px 'Orbitron',monospace`;
+    ctx.fillText(`BEST: ${hi}`, W/2, H*0.65);
+  }
+
+  ctx.textBaseline='alphabetic';
+  arcadeRAF = requestAnimationFrame(capyDrawHub);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  MODE 1: RUNNER
+// ══════════════════════════════════════════════════════════════════════
+function capyStartRunner() {
+  stopArcade();
+  const W = canvas.width, H = canvas.height;
+  const WORLD = CAPY_WORLDS[capyWorld];
+  const GROUND = H - 55;
+  const GRAVITY = 0.55, JUMP = -13;
+
+  let score = 0, distance = 0, coins = 0;
+  let speed = 3.8, frame = 0;
+  let dead = false;
+
   const capy = {
-    x: W * 0.18, y: GROUND, w: 52, h: 38,
-    vy: 0, vx: 0, onGround: true,
-    jumps: 2, // double jump
-    walkFrame: 0, dead: false,
-    coyoteTime: 0,  // frames after leaving platform still can jump
+    x: W*0.18, y: GROUND-38, w: 58, h: 40,
+    vy:0, onGround:true, jumps:2, coyoteTime:0,
+    walkF:0, invincible:0,
   };
 
-  // Platforms
-  const platforms = [
-    { x: 0, y: GROUND, w: W, h: 45, color: '#1c1c28' }, // ground
-  ];
-
-  // Floating platforms pool
-  const floatPlats = [];
-  let platTimer = 0;
-
-  // Obstacles
+  // World-specific objects
+  const platforms = [];
   const obstacles = [];
-  let obstTimer = 60;
+  const coinList  = [];
+  const gems      = [];
+  const particles = [];
+  let platTimer=0, obstTimer=70, coinTimer=45, gemTimer=300;
 
-  // Collectibles (coins)
-  const coins = [];
-  let coinTimer = 40;
-
-  // Background layers (parallax)
-  const bgLayers = [
-    { items: Array.from({length:8},()=>({x:rnd(0,W), y:rnd(20,H*0.5), s:rnd(0.3,0.6)})), spd:0.2, color:'#ffffff15' },
-    { items: Array.from({length:5},()=>({x:rnd(0,W), y:rnd(H*0.3,H*0.7), s:rnd(0.6,1.2)})), spd:0.6, color:'#7c6fff22' },
-  ];
-
-  // Input
-  let jumpQueued = false;
-  function onKey(e) {
-    if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && e.type === 'keydown') {
-      jumpQueued = true; e.preventDefault();
-    }
-  }
-  function onTap(e) { jumpQueued = true; }
-  document.addEventListener('keydown', onKey);
-  canvas.addEventListener('touchstart', onTap, { passive: true });
-  canvas.addEventListener('click', onTap);
-
-  arcadeGame = {
-    cleanup() {
-      document.removeEventListener('keydown', onKey);
-      canvas.removeEventListener('touchstart', onTap);
-      canvas.removeEventListener('click', onTap);
-    }
-  };
-
-  // Draw capybara function
-  function drawCapybara(x, y, w, h, walkF, dead) {
-    const img = dead ? IMGS['capy_dead'] : IMGS['capy'];
-    if (img && img.complete && img.naturalWidth > 0) {
-      ctx.save();
-      // Subtle walk bob
-      const bob = Math.sin(walkF * 0.28) * 2;
-      ctx.drawImage(img, x, y + (dead ? 0 : bob), w, h);
-      ctx.restore();
-    } else {
-      // Fallback circle
-      ctx.fillStyle = dead ? '#666' : '#8B6914';
-      ctx.beginPath(); ctx.arc(x + w/2, y + h/2, w/2, 0, Math.PI*2); ctx.fill();
-    }
-  }
+  // Background parallax layers
+  const bgItems = Array.from({length:12}, (_,i) => ({
+    x: rnd(0,W), y: rnd(H*0.1, H*0.7),
+    s: rnd(0.4,1.2), spd: rnd(0.3,0.9),
+    type: i%3
+  }));
 
   function spawnPlatform() {
-    const lastPlat = floatPlats[floatPlats.length - 1];
-    const minX = lastPlat ? lastPlat.x + lastPlat.w + 80 : W + 60;
-    const pw = rnd(60, 140);
-    const py = rnd(GROUND - 160, GROUND - 70);
-    floatPlats.push({ x: Math.max(W, minX), y: py, w: pw, h: 14, color: '#2d2d3f' });
+    const last = platforms[platforms.length-1];
+    const px = last ? Math.max(W+40, last.x + last.w + rnd(60,120)) : W+60;
+    const py = rnd(GROUND-150, GROUND-60);
+    const pw = rnd(70, 140);
+    platforms.push({ x:px, y:py, w:pw, h:14 });
   }
 
   function spawnObstacle() {
-    const types = ['cactus', 'rock', 'log'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const h2 = type === 'cactus' ? rnd(35, 55) : type === 'rock' ? rnd(22, 38) : rnd(20, 30);
-    const w2 = type === 'log' ? rnd(60, 100) : rnd(22, 36);
-    obstacles.push({ x: W + 20, y: GROUND - h2, w: w2, h: h2, type, onGround: true });
+    const types = worldObstacles(capyWorld);
+    const t = types[Math.floor(Math.random()*types.length)];
+    const h2 = t==='cactus'?rnd(38,58):t==='rock'?rnd(24,40):t==='log'?rnd(22,32):t==='barrel'?rnd(28,38):rnd(20,34);
+    const w2 = t==='log'?rnd(55,90):t==='barrel'?rnd(28,38):rnd(24,38);
+    obstacles.push({ x:W+20, y:GROUND-h2, w:w2, h:h2, type:t });
   }
 
   function spawnCoin() {
-    const onPlatform = floatPlats.length > 0 && Math.random() < 0.4;
-    let cx = W + rnd(20, 80), cy;
-    if (onPlatform) {
-      const plat = floatPlats[Math.floor(Math.random() * floatPlats.length)];
-      cx = plat.x + plat.w * 0.5; cy = plat.y - 22;
-    } else {
-      cy = rnd(GROUND - 140, GROUND - 40);
-    }
-    coins.push({ x: cx, y: cy, r: 8, collected: false, floatOffset: Math.random() * Math.PI * 2 });
+    const onPlat = platforms.length>0 && Math.random()<0.4;
+    let cx=W+rnd(20,80), cy;
+    if (onPlat) { const p=platforms[Math.floor(Math.random()*platforms.length)]; cx=p.x+p.w*0.5; cy=p.y-22; }
+    else cy=rnd(GROUND-150,GROUND-45);
+    coinList.push({ x:cx, y:cy, r:9, phase:Math.random()*Math.PI*2, collected:false });
   }
 
-  function drawObstacle(o) {
-    if (o.type === 'cactus') {
-      ctx.fillStyle = '#2d6a4f';
-      // Main trunk
-      roundRect(ctx, o.x + o.w*0.3, o.y, o.w*0.4, o.h, 5); ctx.fill();
-      // Arms
-      roundRect(ctx, o.x, o.y + o.h*0.3, o.w*0.35, o.h*0.18, 5); ctx.fill();
-      roundRect(ctx, o.x + o.w*0.65, o.y + o.h*0.45, o.w*0.35, o.h*0.18, 5); ctx.fill();
-      // Up bits
-      roundRect(ctx, o.x, o.y + o.h*0.02, o.w*0.2, o.h*0.3, 5); ctx.fill();
-      roundRect(ctx, o.x + o.w*0.8, o.y + o.h*0.15, o.w*0.2, o.h*0.3, 5); ctx.fill();
-      // Highlight
-      ctx.fillStyle = '#40916c'; roundRect(ctx, o.x+o.w*0.36, o.y+2, o.w*0.12, o.h-4, 4); ctx.fill();
-    } else if (o.type === 'rock') {
-      ctx.fillStyle = '#4a5568';
-      ctx.beginPath(); ctx.ellipse(o.x+o.w/2, o.y+o.h*0.6, o.w*0.55, o.h*0.6, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#718096';
-      ctx.beginPath(); ctx.ellipse(o.x+o.w*0.35, o.y+o.h*0.25, o.w*0.3, o.h*0.28, -0.4, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.beginPath(); ctx.ellipse(o.x+o.w*0.28, o.y+o.h*0.22, o.w*0.12, o.h*0.1, -0.4, 0, Math.PI*2); ctx.fill();
-    } else { // log
-      ctx.fillStyle = '#92400e';
-      roundRect(ctx, o.x, o.y, o.w, o.h, o.h*0.3); ctx.fill();
-      ctx.fillStyle = '#78350f'; ctx.lineWidth = 1.5;
-      for (let i = 1; i < 4; i++) {
-        ctx.beginPath(); ctx.moveTo(o.x + o.w*(i/4), o.y+4); ctx.lineTo(o.x + o.w*(i/4), o.y+o.h-4); ctx.stroke();
-      }
-      // Wood grain
-      ctx.fillStyle = '#b45309'; roundRect(ctx, o.x+4, o.y+o.h*0.2, o.w-8, o.h*0.2, 3); ctx.fill();
-    }
+  function spawnGem() {
+    gems.push({ x:W+30, y:rnd(GROUND-200,GROUND-80), r:10, phase:0, collected:false });
   }
+
+  // Input
+  let jumpQ = false;
+  function onKey(e) { if(['Space','ArrowUp','KeyW'].includes(e.code)){ jumpQ=true; e.preventDefault(); } }
+  function onTap()  { jumpQ=true; }
+  document.addEventListener('keydown',onKey);
+  canvas.addEventListener('touchstart',onTap,{passive:true});
+  canvas.addEventListener('click',onTap);
+
+  arcadeGame = { cleanup(){ document.removeEventListener('keydown',onKey); canvas.removeEventListener('touchstart',onTap); canvas.removeEventListener('click',onTap); } };
+
+  // Controls
+  const ctrl=id('arcadeControls');
+  ctrl.innerHTML=`<button class="arc-btn wide" id="capyJump" style="max-width:180px;margin:0 auto;display:block">🐾 JUMP</button>`;
+  id('capyJump').addEventListener('click',()=>jumpQ=true);
 
   function loop() {
-    frame++;
-    ctx.fillStyle = WORLD.bg; ctx.fillRect(0, 0, W, H);
+    frame++; ctx.fillStyle=WORLD.bg; ctx.fillRect(0,0,W,H);
 
-    // Parallax bg
-    bgLayers.forEach(layer => {
-      layer.items.forEach(item => {
-        item.x -= layer.spd * (gameSpeed / 3.5);
-        if (item.x < -item.s * 30) item.x = W + item.s * 30;
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = layer.color.replace(/[\d.]+\)$/, '0.15)');
-        ctx.beginPath(); ctx.arc(item.x, item.y, item.s * 15, 0, Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1;
-      });
+    // BG parallax
+    bgItems.forEach(item=>{
+      item.x -= item.spd*(speed/3.8);
+      if(item.x<-60) item.x=W+60;
+      ctx.globalAlpha=0.12+item.s*0.08;
+      ctx.fillStyle=WORLD.decorColor||'#ffffff22';
+      if(item.type===0){ ctx.beginPath(); ctx.arc(item.x,item.y,8*item.s,0,Math.PI*2); ctx.fill(); }
+      else if(item.type===1){ ctx.fillRect(item.x,item.y,3,20*item.s); }
+      else { ctx.beginPath(); ctx.arc(item.x,item.y,2,0,Math.PI*2); ctx.fill(); }
     });
+    ctx.globalAlpha=1;
 
     // Ground
-    ctx.fillStyle = WORLD.ground; ctx.fillRect(0, GROUND, W, H - GROUND);
-    // Ground line
-    ctx.strokeStyle = WORLD.groundLine; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
-    // Ground detail
-    ctx.fillStyle = WORLD.groundLine;
-    for (let i = 0; i < 12; i++) ctx.fillRect(((i * 73 + frame * gameSpeed * 0.4) % W), GROUND + 6, 3, 3);
+    ctx.fillStyle=WORLD.ground; ctx.fillRect(0,GROUND,W,H-GROUND);
+    ctx.fillStyle=WORLD.groundTop; ctx.fillRect(0,GROUND-4,W,8);
+    // Ground pattern
+    ctx.fillStyle=WORLD.groundLine;
+    for(let i=0;i<16;i++) ctx.fillRect(((i*71+frame*speed*0.35)%W),GROUND+8,4,3);
 
-    if (!capy.dead) {
-      distance += gameSpeed * 0.016;
-      arcadeScore = Math.floor(distance * 10 + score * 50);
-      updateArcadeScore();
-      gameSpeed = 3.5 + distance * 0.04; // accelerate
+    if(!dead){
+      distance+=speed*0.016; speed=3.8+distance*0.04;
+      score=Math.floor(distance*10+coins*50+gems.filter(g=>g.collected).length*200);
+      arcadeScore=score; updateArcadeScore();
     }
 
-    // ── Floating platforms ──
-    platTimer++;
-    if (platTimer > Math.max(55, 90 - distance * 0.5)) { spawnPlatform(); platTimer = 0; }
-    for (let i = floatPlats.length - 1; i >= 0; i--) {
-      const p = floatPlats[i];
-      if (!capy.dead) p.x -= gameSpeed;
-      if (p.x + p.w < -20) { floatPlats.splice(i, 1); continue; }
-      ctx.fillStyle = WORLD.platColor;
-      roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.fill();
-      ctx.strokeStyle = WORLD.platBorder; ctx.lineWidth = 1.5;
-      roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.stroke();
-      // Shine
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      roundRect(ctx, p.x+4, p.y+2, p.w-8, 4, 2); ctx.fill();
-    }
+    // Spawn
+    platTimer++; if(platTimer>Math.max(40,80-distance*0.6)){ spawnPlatform(); platTimer=0; }
+    if(!dead){ obstTimer--; if(obstTimer<=0){ spawnObstacle(); obstTimer=Math.max(30,75-distance*0.7)+rnd(0,25); } }
+    coinTimer--; if(coinTimer<=0){ spawnCoin(); coinTimer=rnd(28,55); }
+    gemTimer--; if(gemTimer<=0){ spawnGem(); gemTimer=rnd(250,400); }
 
-    // ── Obstacles ──
-    obstTimer--;
-    if (obstTimer <= 0 && !capy.dead) {
-      spawnObstacle();
-      obstTimer = Math.max(35, 80 - distance * 0.8) + rnd(0, 30);
-    }
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      const o = obstacles[i];
-      if (!capy.dead) o.x -= gameSpeed;
-      if (o.x + o.w < -10) { obstacles.splice(i, 1); continue; }
-      drawObstacle(o);
-      // Collision
-      if (!capy.dead && o.x < capy.x + capy.w*0.75 && o.x + o.w > capy.x + capy.w*0.2 &&
-          o.y < capy.y + capy.h*0.9 && o.y + o.h > capy.y + capy.h*0.3) {
-        capy.dead = true;
-        setTimeout(() => {
-          gameOver('💀', `SCORE: ${arcadeScore}`);
-        }, 900);
-      }
-    }
+    // Move world
+    for(const p of platforms){ if(!dead) p.x-=speed; }
+    for(const o of obstacles){ if(!dead) o.x-=speed; }
+    for(const c of coinList) { if(!dead) c.x-=speed; c.phase+=0.07; }
+    for(const g of gems)     { if(!dead) g.x-=speed; g.phase+=0.05; }
+    platforms.splice(0, platforms.filter(p=>p.x+p.w<-20).length);
+    obstacles.splice(0, obstacles.filter(o=>o.x+o.w<-10).length);
+    coinList.splice(0, coinList.filter(c=>c.x<-20||c.collected).length);
+    gems.splice(0, gems.filter(g=>g.x<-20||g.collected).length);
 
-    // ── Coins ──
-    coinTimer--;
-    if (coinTimer <= 0 && !capy.dead) { spawnCoin(); coinTimer = rnd(30, 60); }
-    for (let i = coins.length - 1; i >= 0; i--) {
-      const c = coins[i];
-      if (!capy.dead) c.x -= gameSpeed;
-      if (c.x < -20) { coins.splice(i, 1); continue; }
-      if (c.collected) continue;
-      const floatY = c.y + Math.sin(frame * 0.07 + c.floatOffset) * 4;
-      // Collect
-      if (!capy.dead && Math.hypot(c.x - (capy.x+capy.w*0.6), floatY - (capy.y+capy.h*0.4)) < c.r + 18) {
-        c.collected = true; score++; arcadeScore = Math.floor(distance*10+score*50); updateArcadeScore();
-        // Particle burst
-        for (let p = 0; p < 8; p++) { const a = Math.random()*Math.PI*2; }
-        coins.splice(i, 1); continue;
-      }
-      // Draw coin
+    // Draw platforms
+    platforms.forEach(p=>{
+      ctx.fillStyle=WORLD.platColor; roundRect(ctx,p.x,p.y,p.w,p.h,5); ctx.fill();
+      ctx.fillStyle=WORLD.platTop; ctx.fillRect(p.x+3,p.y+1,p.w-6,4);
+      ctx.strokeStyle=WORLD.platBorder; ctx.lineWidth=1.5;
+      roundRect(ctx,p.x,p.y,p.w,p.h,5); ctx.stroke();
+    });
+
+    // Draw obstacles
+    obstacles.forEach(o=>drawRunnerObstacle(ctx,o,WORLD,capyWorld));
+
+    // Draw coins
+    coinList.forEach(c=>{
+      if(c.collected) return;
+      const fy=c.y+Math.sin(c.phase)*4;
       ctx.save();
-      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath(); ctx.arc(c.x, floatY, c.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = `bold ${c.r*1.2}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('$', c.x, floatY);
+      ctx.fillStyle=WORLD.coinColor;
+      ctx.strokeStyle=WORLD.coinBorder; ctx.lineWidth=1.5;
+      ctx.shadowColor=WORLD.coinColor; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(c.x,fy,c.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=WORLD.coinBorder; ctx.font=`bold ${c.r}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('$',c.x,fy);
       ctx.restore();
+    });
+
+    // Draw gems (rare)
+    gems.forEach(g=>{
+      if(g.collected) return;
+      const fy=g.y+Math.sin(g.phase)*5;
+      ctx.save();
+      ctx.fillStyle=WORLD.gemColor; ctx.strokeStyle='#fff8'; ctx.lineWidth=1.5;
+      ctx.shadowColor=WORLD.gemColor; ctx.shadowBlur=14;
+      // Diamond shape
+      ctx.beginPath(); ctx.moveTo(g.x,fy-g.r); ctx.lineTo(g.x+g.r,fy); ctx.lineTo(g.x,fy+g.r); ctx.lineTo(g.x-g.r,fy); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    });
+
+    // Particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.vx*=0.93; p.life-=0.05;
+      if(p.life<=0) particles.splice(i,1);
+    }
+    ctx.globalAlpha=1;
+
+    // Capy physics
+    if(!dead){
+      if(jumpQ){
+        if(capy.jumps>0||capy.coyoteTime>0){
+          capy.vy=JUMP-(capy.jumps===1&&!capy.onGround?1.5:0);
+          capy.jumps--; capy.onGround=false; capy.coyoteTime=0;
+          for(let i=0;i<6;i++) particles.push({x:capy.x+capy.w*0.5,y:capy.y+capy.h,vx:rnd(-2,2),vy:rnd(0,2),r:4,color:WORLD.particles,life:0.8});
+        }
+        jumpQ=false;
+      }
+      capy.vy+=GRAVITY; capy.y+=capy.vy;
+      capy.onGround=false;
+
+      if(capy.y+capy.h>=GROUND){ capy.y=GROUND-capy.h; capy.vy=0; capy.onGround=true; capy.jumps=2; capy.coyoteTime=0; }
+      for(const p of platforms){
+        if(capy.x+capy.w*0.8>p.x&&capy.x+capy.w*0.2<p.x+p.w&&capy.vy>=0&&capy.y+capy.h>=p.y&&capy.y+capy.h<=p.y+p.h+16){
+          capy.y=p.y-capy.h; capy.vy=0; capy.onGround=true; capy.jumps=2; capy.coyoteTime=0;
+        }
+      }
+      if(!capy.onGround&&capy.coyoteTime>0) capy.coyoteTime--;
+      if(capy.onGround) capy.coyoteTime=8;
+      capy.walkF+=speed;
+      if(capy.invincible>0) capy.invincible--;
+
+      // Coin collect
+      coinList.forEach(c=>{
+        if(c.collected) return;
+        if(Math.hypot(c.x-(capy.x+capy.w*0.6),c.y+Math.sin(c.phase)*4-(capy.y+capy.h*0.5))<c.r+18){
+          c.collected=true; coins++;
+          for(let i=0;i<8;i++) particles.push({x:c.x,y:c.y,vx:rnd(-3,3),vy:rnd(-4,0),r:3,color:WORLD.coinColor,life:1});
+        }
+      });
+      // Gem collect
+      gems.forEach(g=>{
+        if(g.collected) return;
+        if(Math.hypot(g.x-(capy.x+capy.w*0.6),g.y-(capy.y+capy.h*0.5))<g.r+20){
+          g.collected=true;
+          for(let i=0;i<15;i++) particles.push({x:g.x,y:g.y,vx:rnd(-4,4),vy:rnd(-5,-1),r:5,color:WORLD.gemColor,life:1.2});
+        }
+      });
+
+      // Obstacle collision
+      if(capy.invincible<=0){
+        for(const o of obstacles){
+          if(capy.x+capy.w*0.75>o.x+4&&capy.x+capy.w*0.2<o.x+o.w-4&&capy.y+capy.h*0.9>o.y&&capy.y+capy.h*0.2<o.y+o.h){
+            dead=true;
+            const hi=parseInt(localStorage.getItem(`capy_hi_runner_${capyWorld}`)||'0');
+            if(score>hi) localStorage.setItem(`capy_hi_runner_${capyWorld}`,score);
+            setTimeout(()=>showRunnerResult(score,coins),900);
+            break;
+          }
+        }
+      }
+    } else {
+      capy.vy+=GRAVITY*0.5; capy.y=Math.min(capy.y+capy.vy,GROUND-capy.h);
     }
 
-    // ── Capy physics ──
-    if (!capy.dead) {
-      // Jump
-      if (jumpQueued) {
-        if (capy.jumps > 0 || capy.coyoteTime > 0) {
-          capy.vy = JUMP_FORCE - (capy.jumps === 1 && !capy.onGround ? 1.5 : 0);
-          capy.jumps--;
-          capy.onGround = false;
-          capy.coyoteTime = 0;
-        }
-        jumpQueued = false;
-      }
-      capy.vy += GRAVITY;
-      capy.y += capy.vy;
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(capy.x+capy.w/2,GROUND+3,capy.w*0.38,5,0,0,Math.PI*2); ctx.fill();
 
-      // Ground collision
-      capy.onGround = false;
-      if (capy.y + capy.h >= GROUND) {
-        capy.y = GROUND - capy.h;
-        capy.vy = 0; capy.onGround = true; capy.jumps = 2; capy.coyoteTime = 0;
-      }
+    // Draw capy
+    ctx.save();
+    if(dead){ ctx.translate(capy.x+capy.w/2,capy.y+capy.h/2); ctx.rotate(Math.PI); ctx.translate(-(capy.x+capy.w/2),-(capy.y+capy.h/2)); }
+    const capImg=IMGS[dead?'capy_dead':'capy'];
+    if(capImg&&capImg.complete&&capImg.naturalWidth>0){
+      const bob=dead?0:Math.sin(capy.walkF*0.28)*2;
+      ctx.drawImage(capImg,capy.x,capy.y+bob,capy.w,capy.h);
+    } else {
+      ctx.fillStyle=dead?'#555':'#8B6914';
+      ctx.beginPath(); ctx.arc(capy.x+capy.w/2,capy.y+capy.h/2,capy.w/2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
 
-      // Platform collision (only from above)
-      for (const p of floatPlats) {
-        if (capy.x + capy.w*0.75 > p.x && capy.x + capy.w*0.2 < p.x + p.w) {
-          if (capy.vy >= 0 && capy.y + capy.h >= p.y && capy.y + capy.h <= p.y + p.h + 15) {
-            capy.y = p.y - capy.h;
-            capy.vy = 0; capy.onGround = true; capy.jumps = 2; capy.coyoteTime = 0;
+    // HUD
+    ctx.fillStyle=WORLD.coinColor; ctx.font=`bold ${W*0.036}px 'Orbitron',monospace`; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(`🪙 ${coins}`, 14, 14);
+    ctx.fillStyle=WORLD.gemColor;
+    ctx.fillText(`💎 ${gems.filter(g=>g.collected).length}`, 14, 14+W*0.05);
+    ctx.fillStyle=C.sub; ctx.font=`${W*0.026}px 'Orbitron',monospace`;
+    ctx.fillText(`${(distance*10).toFixed(0)}m`, 14, 14+W*0.1);
+
+    // Speed bar
+    const spRatio=Math.min(1,(speed-3.8)/6);
+    ctx.fillStyle=C.bg2; roundRect(ctx,W-74,14,60,8,4); ctx.fill();
+    ctx.fillStyle=spRatio>0.7?WORLD.gemColor:spRatio>0.4?WORLD.coinColor:'#4ade80';
+    if(spRatio>0){ roundRect(ctx,W-74,14,60*spRatio,8,4); ctx.fill(); }
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; roundRect(ctx,W-74,14,60,8,4); ctx.stroke();
+    ctx.fillStyle=C.sub; ctx.font=`${W*0.02}px 'Orbitron',monospace`; ctx.textAlign='right';
+    ctx.fillText('SPEED',W-8,13);
+    // Jump dots
+    for(let j=0;j<2;j++){
+      ctx.fillStyle=j<capy.jumps?WORLD.gemColor:C.bg3;
+      ctx.beginPath(); ctx.arc(W-22-j*18,36,6,0,Math.PI*2); ctx.fill();
+    }
+
+    if(!dead) arcadeRAF=requestAnimationFrame(loop);
+  }
+  arcadeRAF=requestAnimationFrame(loop);
+}
+
+function showRunnerResult(score, coins) {
+  const ctrl=id('arcadeControls');
+  const hi=parseInt(localStorage.getItem(`capy_hi_runner_${capyWorld}`)||'0');
+  ctrl.innerHTML=`
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-family:var(--font-hd);font-size:14px;letter-spacing:2px;color:var(--accent)">GAME OVER</div>
+      <div style="font-family:var(--font-hd);font-size:11px;color:var(--sub);margin-top:4px">SCORE ${score}  ·  COINS ${coins}  ·  BEST ${hi}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="start-btn" id="capyRetry" style="flex:1">↺ RETRY</button>
+      <button class="ctrl-btn" id="capyMenu" style="flex:1;border-color:var(--accent);color:var(--accent)">MENU</button>
+    </div>`;
+  id('capyRetry').addEventListener('click',capyStartRunner);
+  id('capyMenu').addEventListener('click',()=>{ stopArcade(); hide(arcadeScreen); show(hub); });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  MODE 2: CLIMBER  – прыгай вверх по платформам
+// ══════════════════════════════════════════════════════════════════════
+function capyStartClimber() {
+  stopArcade();
+  const W=canvas.width, H=canvas.height;
+  const WORLD=CAPY_WORLDS[capyWorld];
+  const GRAVITY=0.45, JUMP=-12.5;
+  const PLAT_W_MIN=55, PLAT_W_MAX=110;
+  const PLAT_GAP=72; // vertical gap between platforms
+
+  let score=0, coins=0, gems_=0;
+  let dead=false, frame2=0;
+  let cameraY=0; // how far we've scrolled up
+  let highestY=H; // highest capy position (world coords)
+
+  const capy={
+    x:W/2-29, y:H-120,
+    w:58, h:40,
+    vx:0, vy:0,
+    onGround:false, jumps:2,
+    walkF:0, dead:false,
+    coyoteTime:0,
+  };
+
+  // Generate platforms ahead
+  const plats=[];
+  const coinList2=[];
+  const gemList2=[];
+  const particles2=[];
+
+  // Starter platform
+  plats.push({ x:W*0.1, y:H-80, w:W*0.8, h:14, type:'normal', moving:false });
+
+  function genPlatforms(fromY, count=20) {
+    let y=fromY;
+    for(let i=0;i<count;i++){
+      y-=PLAT_GAP+rnd(-15,20);
+      const pw=rnd(PLAT_W_MIN,PLAT_W_MAX);
+      const px=rnd(8, W-pw-8);
+      const moving=i>5&&Math.random()<0.3;
+      const type=getWorldPlatType(capyWorld, i);
+      plats.push({ x:px, y, w:pw, h:14, type, moving, mx:px, mdir:1, mspd:rnd(0.8,1.8) });
+      // Coins above some platforms
+      if(Math.random()<0.55){
+        const n=Math.floor(rnd(1,4));
+        for(let c=0;c<n;c++) coinList2.push({ x:px+pw*(c+1)/(n+1), y:y-26-c*0, wy:y-26, phase:Math.random()*Math.PI*2, collected:false });
+      }
+      // Rare gem
+      if(Math.random()<0.12) gemList2.push({ x:px+pw/2, y:y-35, wy:y-35, phase:0, collected:false });
+    }
+  }
+  genPlatforms(H-80);
+
+  // Keys
+  const keys2={};
+  function onK(e){ keys2[e.code]=(e.type==='keydown'); if(['Space','ArrowUp','KeyW','ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code)) e.preventDefault(); }
+  document.addEventListener('keydown',onK);
+  document.addEventListener('keyup',onK);
+
+  arcadeGame={cleanup(){document.removeEventListener('keydown',onK);document.removeEventListener('keyup',onK);}};
+
+  // Controls
+  const ctrl=id('arcadeControls');
+  ctrl.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:6px;justify-content:center">
+      <div></div>
+      <button class="arc-btn" id="clUp">▲</button>
+      <div></div>
+      <button class="arc-btn" id="clLeft">◀</button>
+      <button class="arc-btn" id="clDown" style="font-size:11px;letter-spacing:0">DROP</button>
+      <button class="arc-btn" id="clRight">▶</button>
+    </div>`;
+  id('clUp').addEventListener('touchstart',e=>{e.preventDefault();keys2['ArrowUp']=true;},{passive:false});
+  id('clUp').addEventListener('touchend',()=>keys2['ArrowUp']=false);
+  id('clLeft').addEventListener('touchstart',e=>{e.preventDefault();keys2['ArrowLeft']=true;},{passive:false});
+  id('clLeft').addEventListener('touchend',()=>keys2['ArrowLeft']=false);
+  id('clRight').addEventListener('touchstart',e=>{e.preventDefault();keys2['ArrowRight']=true;},{passive:false});
+  id('clRight').addEventListener('touchend',()=>keys2['ArrowRight']=false);
+  id('clDown').addEventListener('touchstart',e=>{e.preventDefault();keys2['ArrowDown']=true;},{passive:false});
+  id('clDown').addEventListener('touchend',()=>keys2['ArrowDown']=false);
+  ['clUp','clLeft','clRight','clDown'].forEach(btn=>{
+    document.getElementById(btn).addEventListener('mousedown',()=>{ const k={'clUp':'ArrowUp','clLeft':'ArrowLeft','clRight':'ArrowRight','clDown':'ArrowDown'}[btn]; keys2[k]=true; });
+    document.getElementById(btn).addEventListener('mouseup',()=>{ const k={'clUp':'ArrowUp','clLeft':'ArrowLeft','clRight':'ArrowRight','clDown':'ArrowDown'}[btn]; keys2[k]=false; });
+  });
+
+  function worldToScreen(wy){ return wy - cameraY; }
+
+  function loop2(){
+    frame2++;
+    ctx.fillStyle=WORLD.bg; ctx.fillRect(0,0,W,H);
+
+    // Generate more platforms as we go up
+    const topPlat=plats[plats.length-1];
+    if(topPlat && cameraY - topPlat.y > -H*0.5) genPlatforms(topPlat.y, 15);
+
+    // Camera follows capy upward
+    const targetCam = capy.y - H*0.45;
+    cameraY += (targetCam - cameraY) * 0.08;
+
+    // BG parallax stars
+    for(let i=0;i<30;i++){
+      const sy=((i*137+frame2*0.3)%H+H)%H;
+      const sx=(i*73+73)%W;
+      ctx.fillStyle=WORLD.gemColor; ctx.globalAlpha=0.06+i%4*0.03;
+      ctx.beginPath(); ctx.arc(sx,sy,1,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    if(!dead){
+      // Move platforms
+      plats.forEach(p=>{
+        if(p.moving){ p.x+=p.mdir*p.mspd; if(p.x<8||p.x+p.w>W-8) p.mdir*=-1; }
+      });
+
+      // Physics
+      if(keys2['ArrowLeft']||keys2['KeyA']) capy.vx-=0.7;
+      if(keys2['ArrowRight']||keys2['KeyD']) capy.vx+=0.7;
+      capy.vx*=0.86;
+      if(Math.abs(capy.vx)>6) capy.vx=Math.sign(capy.vx)*6;
+
+      if((keys2['ArrowUp']||keys2['Space']||keys2['KeyW'])&&(capy.jumps>0||capy.coyoteTime>0)){
+        if(!capy._jumpHeld){ capy.vy=JUMP-(capy.jumps===1&&!capy.onGround?1.5:0); capy.jumps--; capy.onGround=false; capy.coyoteTime=0; capy._jumpHeld=true;
+          for(let i=0;i<6;i++) particles2.push({x:capy.x+capy.w/2,y:capy.y+capy.h,vx:rnd(-2,2),vy:rnd(1,3),r:3,color:WORLD.particles,life:0.7}); }
+      } else { capy._jumpHeld=false; }
+
+      capy.vy+=GRAVITY; capy.x+=capy.vx; capy.y+=capy.vy;
+
+      // Walls wrap
+      if(capy.x+capy.w<0) capy.x=W;
+      if(capy.x>W) capy.x=-capy.w;
+
+      capy.onGround=false;
+      if(capy.coyoteTime>0) capy.coyoteTime--;
+
+      // Platform collision (only landing from above)
+      for(const p of plats){
+        if(!p) continue;
+        const sy=worldToScreen(p.y);
+        if(capy.x+capy.w*0.8>p.x&&capy.x+capy.w*0.2<p.x+p.w&&capy.vy>=0&&capy.y+capy.h>=p.y&&capy.y+capy.h<=p.y+p.h+18){
+          if(!keys2['ArrowDown']){
+            capy.y=p.y-capy.h; capy.vy=0; capy.onGround=true; capy.jumps=2; capy.coyoteTime=8;
+            // Bounce platforms
+            if(p.type==='bouncy'){ capy.vy=-17; capy.onGround=false; capy.jumps=2; for(let i=0;i<8;i++) particles2.push({x:capy.x+capy.w/2,y:capy.y+capy.h,vx:rnd(-3,3),vy:rnd(-2,1),r:4,color:WORLD.gemColor,life:0.9}); }
           }
         }
       }
 
-      if (!capy.onGround && capy.coyoteTime > 0) capy.coyoteTime--;
-      if (capy.onGround) capy.coyoteTime = 8;
+      // Score = highest point reached
+      if(capy.y < highestY){ highestY=capy.y; score=Math.floor((H-highestY)*0.18)+coins*50+gems_*200; arcadeScore=score; updateArcadeScore(); }
 
-      capy.walkFrame = capy.onGround ? capy.walkFrame + gameSpeed : capy.walkFrame;
+      capy.walkF+=Math.abs(capy.vx)*0.4;
+
+      // Coin collect
+      coinList2.forEach(c=>{
+        if(c.collected) return;
+        const sy=worldToScreen(c.wy);
+        if(Math.hypot(c.x-(capy.x+capy.w*0.6),c.wy-(capy.y+capy.h*0.5))<20){ c.collected=true; coins++; score+=50; for(let i=0;i<8;i++) particles2.push({x:c.x,y:sy,vx:rnd(-2,2),vy:rnd(-3,0),r:3,color:WORLD.coinColor,life:1}); }
+      });
+      gemList2.forEach(g=>{
+        if(g.collected) return;
+        if(Math.hypot(g.x-(capy.x+capy.w*0.6),g.wy-(capy.y+capy.h*0.5))<24){ g.collected=true; gems_++; score+=200; for(let i=0;i<14;i++) particles2.push({x:g.x,y:worldToScreen(g.wy),vx:rnd(-4,4),vy:rnd(-5,-1),r:5,color:WORLD.gemColor,life:1.2}); }
+      });
+
+      // Death: fell below start
+      if(capy.y > H+80){
+        dead=true;
+        const hi=parseInt(localStorage.getItem(`capy_hi_climber_${capyWorld}`)||'0');
+        if(score>hi) localStorage.setItem(`capy_hi_climber_${capyWorld}`,score);
+        setTimeout(()=>showClimberResult(score,coins,gems_),800);
+      }
+    }
+
+    // Draw platforms
+    plats.forEach(p=>{
+      const sy=worldToScreen(p.y);
+      if(sy>H+30||sy+p.h<-30) return;
+      drawClimberPlatform(ctx,p,sy,WORLD,capyWorld);
+    });
+
+    // Draw coins
+    coinList2.forEach(c=>{
+      if(c.collected) return;
+      const sy=worldToScreen(c.wy)+Math.sin(c.phase+frame2*0.07)*4;
+      if(sy<-20||sy>H+20) return;
+      ctx.save();
+      ctx.fillStyle=WORLD.coinColor; ctx.strokeStyle=WORLD.coinBorder; ctx.lineWidth=1.5;
+      ctx.shadowColor=WORLD.coinColor; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(c.x,sy,9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=WORLD.coinBorder; ctx.font=`bold 9px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('$',c.x,sy); ctx.restore();
+    });
+    // Gems
+    gemList2.forEach(g=>{
+      if(g.collected) return;
+      const sy=worldToScreen(g.wy)+Math.sin(g.phase+frame2*0.05)*5;
+      if(sy<-20||sy>H+20) return;
+      ctx.save();
+      ctx.fillStyle=WORLD.gemColor; ctx.shadowColor=WORLD.gemColor; ctx.shadowBlur=16;
+      ctx.beginPath(); ctx.moveTo(g.x,sy-11); ctx.lineTo(g.x+11,sy); ctx.lineTo(g.x,sy+11); ctx.lineTo(g.x-11,sy); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#fff8'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.restore();
+    });
+
+    // Particles
+    for(let i=particles2.length-1;i>=0;i--){
+      const p=particles2[i];
+      ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.vx*=0.93; p.life-=0.05;
+      if(p.life<=0) particles2.splice(i,1);
+    }
+    ctx.globalAlpha=1;
+
+    // Draw capy (screen coords)
+    const capySY=worldToScreen(capy.y);
+    ctx.save();
+    if(dead){ ctx.translate(capy.x+capy.w/2,capySY+capy.h/2); ctx.rotate(Math.PI); ctx.translate(-(capy.x+capy.w/2),-(capySY+capy.h/2)); }
+    const cImg=IMGS[dead?'capy_dead':'capy'];
+    if(cImg&&cImg.complete&&cImg.naturalWidth>0){
+      ctx.drawImage(cImg,capy.x,capySY+(dead?0:Math.sin(capy.walkF*0.28)*1.5),capy.w,capy.h);
     } else {
-      capy.vy += GRAVITY * 0.5;
-      capy.y = Math.min(capy.y + capy.vy, GROUND - capy.h);
+      ctx.fillStyle='#8B6914'; ctx.beginPath(); ctx.arc(capy.x+capy.w/2,capySY+capy.h/2,capy.w/2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // HUD
+    const altM=Math.max(0,Math.floor((H-highestY)*0.18));
+    ctx.fillStyle=WORLD.gemColor; ctx.font=`bold ${W*0.044}px 'Orbitron',monospace`; ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText(`${altM}m`, W/2, 10);
+    ctx.fillStyle=WORLD.coinColor; ctx.font=`${W*0.03}px 'Orbitron',monospace`;
+    ctx.fillText(`🪙${coins}  💎${gems_}`, W/2, 10+W*0.056);
+    // Jump dots
+    for(let j=0;j<2;j++){
+      ctx.fillStyle=j<capy.jumps?WORLD.gemColor:C.bg3;
+      ctx.beginPath(); ctx.arc(W-22-j*18,18,6,0,Math.PI*2); ctx.fill();
+    }
+    // Height arrow indicator
+    if(altM>0){
+      ctx.fillStyle=WORLD.gemColor; ctx.globalAlpha=0.5;
+      ctx.font=`${W*0.04}px sans-serif`; ctx.textAlign='right';
+      ctx.fillText('▲ GO UP', W-12, H/2);
+      ctx.globalAlpha=1;
     }
 
-    // Draw shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath(); ctx.ellipse(capy.x+capy.w/2, GROUND+3, capy.w*0.4, 5, 0, 0, Math.PI*2); ctx.fill();
-
-    // Draw capybara
-    drawCapybara(capy.x, capy.y, capy.w, capy.h, capy.walkFrame, capy.dead);
-
-    // ── Score / info overlay ──
-    ctx.fillStyle = C.text;
-    ctx.font = `bold ${W*0.034}px 'Orbitron', monospace`;
-    ctx.textAlign = 'left';
-    ctx.fillText(`🪙 ${score}`, 14, 32);
-
-    ctx.fillStyle = C.sub;
-    ctx.font = `${W*0.026}px 'Orbitron', monospace`;
-    ctx.fillText(`${(distance*10).toFixed(0)}m`, 14, 52);
-
-    // Speed indicator
-    const spd = Math.min(1, (gameSpeed - 3.5) / 5);
-    ctx.fillStyle = C.bg2; roundRect(ctx, W-70, 14, 56, 8, 4); ctx.fill();
-    ctx.fillStyle = spd > 0.7 ? C.pink : spd > 0.4 ? C.yellow : C.green;
-    if (spd > 0) { roundRect(ctx, W-70, 14, 56*spd, 8, 4); ctx.fill(); }
-    ctx.strokeStyle = C.border; ctx.lineWidth=1; roundRect(ctx,W-70,14,56,8,4); ctx.stroke();
-    ctx.fillStyle=C.sub; ctx.font=`${W*0.022}px 'Orbitron', monospace`; ctx.textAlign='right';
-    ctx.fillText('SPEED', W-8, 14);
-
-    // Double jump indicator
-    for (let j = 0; j < 2; j++) {
-      ctx.fillStyle = j < capy.jumps ? C.accent : C.bg3;
-      ctx.beginPath(); ctx.arc(W - 22 - j*18, 38, 6, 0, Math.PI*2); ctx.fill();
-    }
-
-    if (!capy.dead) arcadeRAF = requestAnimationFrame(loop);
+    if(!dead) arcadeRAF=requestAnimationFrame(loop2);
   }
+  arcadeRAF=requestAnimationFrame(loop2);
+}
 
-  arcadeRAF = requestAnimationFrame(loop);
+function showClimberResult(score, coins, gems) {
+  const ctrl=id('arcadeControls');
+  const hi=parseInt(localStorage.getItem(`capy_hi_climber_${capyWorld}`)||'0');
+  const alt=Math.max(0,Math.floor(score));
+  ctrl.innerHTML=`
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-family:var(--font-hd);font-size:14px;letter-spacing:2px;color:var(--accent)">GAME OVER</div>
+      <div style="font-family:var(--font-hd);font-size:11px;color:var(--sub);margin-top:4px">SCORE ${score}  ·  COINS ${coins}  ·  GEMS ${gems}</div>
+      <div style="font-family:var(--font-hd);font-size:10px;color:var(--sub);margin-top:2px">BEST ${hi}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="start-btn" id="climbRetry" style="flex:1">↺ RETRY</button>
+      <button class="ctrl-btn" id="climbMenu" style="flex:1;border-color:var(--accent);color:var(--accent)">MENU</button>
+    </div>`;
+  id('climbRetry').addEventListener('click',capyStartClimber);
+  id('climbMenu').addEventListener('click',()=>{ stopArcade(); hide(arcadeScreen); show(hub); });
+}
+
+// ── WORLD-SPECIFIC HELPERS ────────────────────────────────────────────
+function worldObstacles(world) {
+  const types = {
+    grassland: ['cactus','rock','log','bush'],
+    snow:      ['snowball','ice_block','log','rock'],
+    volcano:   ['rock','lava_rock','barrel','cactus'],
+    night:     ['barrel','sign','rock','log'],
+    desert:    ['cactus','rock','barrel','skull'],
+  };
+  return types[world]||['rock','log'];
+}
+
+function getWorldPlatType(world, idx) {
+  if(idx<3) return 'normal';
+  const r=Math.random();
+  const worldTypes={
+    grassland:['normal','normal','normal','bouncy','crumble'],
+    snow:     ['normal','normal','ice','ice','bouncy'],
+    volcano:  ['normal','normal','lava','crumble','bouncy'],
+    night:    ['normal','normal','neon','moving','bouncy'],
+    desert:   ['normal','normal','sand','crumble','moving'],
+  };
+  const types=worldTypes[world]||['normal'];
+  return r<0.5?'normal':types[Math.floor(Math.random()*types.length)];
+}
+
+function drawClimberPlatform(ctx, p, sy, WORLD, world) {
+  const typeColors={
+    normal:  {bg:WORLD.platColor, top:WORLD.platTop, border:WORLD.platBorder},
+    bouncy:  {bg:'#1a3a10', top:'#2a5a18', border:'#4ade80'},
+    crumble: {bg:'#3a2010', top:'#5a3010', border:'#92400e'},
+    ice:     {bg:'#0e1a38', top:'#1a2a58', border:'#60a5fa'},
+    lava:    {bg:'#3a0e00', top:'#5a1400', border:'#f97316'},
+    neon:    {bg:'#1a0a2a', top:'#2a1040', border:'#e879f9'},
+    sand:    {bg:'#2a1e08', top:'#3e2e10', border:'#fbbf24'},
+    moving:  {bg:WORLD.platColor, top:WORLD.platTop, border:WORLD.gemColor},
+  };
+  const tc=typeColors[p.type]||typeColors.normal;
+
+  ctx.fillStyle=tc.bg; roundRect(ctx,p.x,sy,p.w,p.h,5); ctx.fill();
+  ctx.fillStyle=tc.top; ctx.fillRect(p.x+3,sy+1,p.w-6,4);
+  ctx.strokeStyle=tc.border; ctx.lineWidth=1.5; roundRect(ctx,p.x,sy,p.w,p.h,5); ctx.stroke();
+
+  // Type indicators
+  if(p.type==='bouncy'){ ctx.fillStyle='#4ade80'; ctx.font='8px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('⬆',p.x+p.w/2,sy+p.h/2); }
+  if(p.type==='lava'){ ctx.fillStyle='#f97316'; ctx.globalAlpha=0.4; ctx.fillRect(p.x+2,sy+1,p.w-4,p.h-2); ctx.globalAlpha=1; }
+  if(p.type==='neon'){ ctx.strokeStyle=tc.border; ctx.lineWidth=2; ctx.globalAlpha=0.3; roundRect(ctx,p.x+2,sy+2,p.w-4,p.h-4,3); ctx.stroke(); ctx.globalAlpha=1; }
+  if(p.type==='moving'){ ctx.fillStyle=WORLD.gemColor; ctx.beginPath(); ctx.arc(p.x+p.w/2,sy+p.h/2,3,0,Math.PI*2); ctx.fill(); }
+}
+
+function drawRunnerObstacle(ctx, o, WORLD, world) {
+  const t=o.type;
+  if(t==='cactus'||t==='bush'){
+    ctx.fillStyle=world==='volcano'?'#1a5c1a':'#2d6a4f';
+    roundRect(ctx,o.x+o.w*0.3,o.y,o.w*0.4,o.h,5); ctx.fill();
+    roundRect(ctx,o.x,o.y+o.h*0.3,o.w*0.35,o.h*0.2,5); ctx.fill();
+    roundRect(ctx,o.x+o.w*0.65,o.y+o.h*0.45,o.w*0.35,o.h*0.18,5); ctx.fill();
+    // Top bits
+    roundRect(ctx,o.x,o.y+o.h*0.02,o.w*0.22,o.h*0.3,5); ctx.fill();
+    roundRect(ctx,o.x+o.w*0.78,o.y+o.h*0.15,o.w*0.22,o.h*0.28,5); ctx.fill();
+    ctx.fillStyle=t==='bush'?'#40916c':'#52b788';
+    roundRect(ctx,o.x+o.w*0.35,o.y+2,o.w*0.12,o.h-4,4); ctx.fill();
+  } else if(t==='rock'||t==='lava_rock'||t==='snowball'||t==='skull'){
+    const col=t==='lava_rock'?'#7c2d12':t==='snowball'?'#dde8ff':t==='skull'?'#d1d5db':'#4a5568';
+    const col2=t==='lava_rock'?'#9a3412':t==='snowball'?'#f0f5ff':t==='skull'?'#e2e8f0':'#718096';
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.ellipse(o.x+o.w/2,o.y+o.h*0.6,o.w*0.5,o.h*0.55,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=col2;
+    ctx.beginPath(); ctx.ellipse(o.x+o.w*0.35,o.y+o.h*0.28,o.w*0.28,o.h*0.25,-0.4,0,Math.PI*2); ctx.fill();
+    if(t==='lava_rock'){ ctx.strokeStyle='#f97316'; ctx.lineWidth=1; ctx.globalAlpha=0.4;
+      ctx.beginPath(); ctx.moveTo(o.x+o.w*0.3,o.y+o.h*0.5); ctx.lineTo(o.x+o.w*0.7,o.y+o.h*0.3); ctx.stroke(); ctx.globalAlpha=1; }
+  } else if(t==='log'){
+    ctx.fillStyle='#92400e';
+    roundRect(ctx,o.x,o.y,o.w,o.h,o.h*0.3); ctx.fill();
+    ctx.fillStyle='#78350f'; ctx.lineWidth=1;
+    for(let i=1;i<4;i++) { ctx.beginPath(); ctx.moveTo(o.x+o.w*(i/4),o.y+4); ctx.lineTo(o.x+o.w*(i/4),o.y+o.h-4); ctx.stroke(); }
+    ctx.fillStyle='#b45309'; roundRect(ctx,o.x+4,o.y+o.h*0.2,o.w-8,o.h*0.22,3); ctx.fill();
+  } else if(t==='barrel'){
+    ctx.fillStyle='#5a3010'; roundRect(ctx,o.x,o.y,o.w,o.h,4); ctx.fill();
+    ctx.strokeStyle='#92400e'; ctx.lineWidth=2;
+    for(const ry of[o.y+o.h*0.2,o.y+o.h*0.5,o.y+o.h*0.8]) { ctx.beginPath(); ctx.moveTo(o.x,ry); ctx.lineTo(o.x+o.w,ry); ctx.stroke(); }
+    ctx.strokeStyle='#a06030'; ctx.lineWidth=1; roundRect(ctx,o.x,o.y,o.w,o.h,4); ctx.stroke();
+  } else if(t==='ice_block'){
+    ctx.fillStyle='#0e1a38'; ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2;
+    roundRect(ctx,o.x,o.y,o.w,o.h,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(147,197,253,0.15)'; roundRect(ctx,o.x+3,o.y+3,o.w-6,o.h-6,2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(o.x+5,o.y+5,o.w*0.25,o.h*0.22);
+  } else if(t==='sign'){
+    ctx.fillStyle='#78350f'; ctx.fillRect(o.x+o.w/2-3,o.y+o.h*0.5,6,o.h*0.5);
+    ctx.fillStyle='#92400e'; roundRect(ctx,o.x,o.y,o.w,o.h*0.55,4); ctx.fill();
+    ctx.strokeStyle='#5a3010'; ctx.lineWidth=1; roundRect(ctx,o.x,o.y,o.w,o.h*0.55,4); ctx.stroke();
+    ctx.fillStyle=WORLD.gemColor; ctx.font=`bold ${o.w*0.3}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('!',o.x+o.w/2,o.y+o.h*0.27);
+  } else if(t==='sand'){
+    ctx.fillStyle='#92400e'; ctx.beginPath(); ctx.ellipse(o.x+o.w/2,o.y+o.h*0.7,o.w*0.5,o.h*0.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#b45309'; ctx.beginPath(); ctx.ellipse(o.x+o.w*0.4,o.y+o.h*0.3,o.w*0.3,o.h*0.3,-0.3,0,Math.PI*2); ctx.fill();
+  }
 }
