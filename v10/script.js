@@ -1134,12 +1134,60 @@ const BB_RARITY_COLOR = { common:'#94a3b8', uncommon:'#4ade80', rare:'#a855f7' }
 
 // ── ARENAS ───────────────────────────────────────────────────────────
 const BB_ARENAS = {
-  dungeon:  { name:'DUNGEON',   emoji:'🏰', bg:'#09090f', floor:'#13122a', wall:'#1a1835', border:'#7c6fff', accent:'#a78bfa' },
-  volcano:  { name:'VOLCANO',   emoji:'🌋', bg:'#0f0600', floor:'#1e0d00', wall:'#2a1400', border:'#f97316', accent:'#fb923c' },
-  icecave:  { name:'ICE CAVE',  emoji:'❄️', bg:'#04060e', floor:'#0a0f20', wall:'#101828', border:'#60a5fa', accent:'#93c5fd' },
-  jungle:   { name:'JUNGLE',    emoji:'🌿', bg:'#030903', floor:'#061206', wall:'#0c1e0c', border:'#4ade80', accent:'#86efac' },
-  space:    { name:'SPACE',     emoji:'🚀', bg:'#02020a', floor:'#06060e', wall:'#0a0a18', border:'#e879f9', accent:'#f0abfc' },
-  castle:   { name:'CASTLE',    emoji:'🏯', bg:'#08060a', floor:'#120e18', wall:'#1a1622', border:'#c084fc', accent:'#d8b4fe' },
+  dungeon: {
+    name:'DUNGEON', emoji:'🏰', desc:'Normal gravity',
+    bg:'#09090f', floor:'#13122a', wall:'#1a1835', border:'#7c6fff', accent:'#a78bfa',
+    gravity: 0.42, bounce: 0.72, friction: 0.998,
+    shape: 'rect',     // standard rectangle
+    obstacles: [],     // no obstacles
+    special: null,
+  },
+  volcano: {
+    name:'VOLCANO', emoji:'🌋', desc:'High gravity + lava floor',
+    bg:'#0f0600', floor:'#1e0d00', wall:'#2a1400', border:'#f97316', accent:'#fb923c',
+    gravity: 0.75,     // heavy gravity
+    bounce: 0.55,      // less bouncy (lava sticky)
+    friction: 0.994,
+    shape: 'rect',
+    special: 'lava',   // bottom lava hurts
+    lavaH: 18,         // lava zone height at bottom
+  },
+  icecave: {
+    name:'ICE CAVE', emoji:'❄️', desc:'Low gravity + slippery',
+    bg:'#04060e', floor:'#0a0f20', wall:'#101828', border:'#60a5fa', accent:'#93c5fd',
+    gravity: 0.18,     // floaty
+    bounce: 0.88,      // very bouncy ice
+    friction: 0.9995,  // almost no friction = slides
+    shape: 'rect',
+    special: 'ice',
+  },
+  jungle: {
+    name:'JUNGLE', emoji:'🌿', desc:'Platforms + vines',
+    bg:'#030903', floor:'#061206', wall:'#0c1e0c', border:'#4ade80', accent:'#86efac',
+    gravity: 0.38,
+    bounce: 0.65,
+    friction: 0.997,
+    shape: 'rect',
+    special: 'platforms',   // has 2 floating platforms
+  },
+  space: {
+    name:'SPACE', emoji:'🚀', desc:'Zero gravity — no floor!',
+    bg:'#02020a', floor:'#06060e', wall:'#0a0a18', border:'#e879f9', accent:'#f0abfc',
+    gravity: 0.0,      // true zero-g
+    bounce: 0.92,
+    friction: 0.999,
+    shape: 'circle',   // circular arena!
+    special: 'zerog',
+  },
+  castle: {
+    name:'CASTLE', emoji:'🏯', desc:'Wall pillars + normal gravity',
+    bg:'#08060a', floor:'#120e18', wall:'#1a1622', border:'#c084fc', accent:'#d8b4fe',
+    gravity: 0.42,
+    bounce: 0.60,
+    friction: 0.996,
+    shape: 'rect',
+    special: 'pillars',  // 2 stone pillars
+  },
 };
 
 // ── STATE ────────────────────────────────────────────────────────────
@@ -1157,6 +1205,7 @@ let BB = {
   selectHover: null,
   shake: 0,
   bgStars: [],
+  obstacles: [],
 };
 
 // ── OPEN ─────────────────────────────────────────────────────────────
@@ -1184,7 +1233,7 @@ function bbBuildUI() {
       <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
         ${arenaKeys.map(k=>{
           const a=BB_ARENAS[k]; const sel=k===selArena;
-          return `<button class="bb-arena" data-a="${k}" style="flex-shrink:0;font-family:var(--font-hd);font-size:9px;letter-spacing:1px;padding:6px 11px;border-radius:16px;cursor:pointer;white-space:nowrap;border:1.5px solid ${sel?a.border:'var(--border)'};background:${sel?a.border+'25':'var(--bg3)'};color:${sel?'#fff':'var(--sub)'}">${a.emoji} ${a.name}</button>`;
+          return `<button class="bb-arena" data-a="${k}" style="flex-shrink:0;font-family:var(--font-hd);font-size:9px;letter-spacing:1px;padding:6px 11px;border-radius:16px;cursor:pointer;white-space:nowrap;border:1.5px solid ${sel?a.border:'var(--border)'};background:${sel?a.border+'25':'var(--bg3)'};color:${sel?'#fff':'var(--sub)'}" title="${a.desc}">${a.emoji} ${a.name}</button>`;
         }).join('')}
       </div>
     </div>
@@ -1218,6 +1267,8 @@ function bbStartFight() {
     bbMakeBall('left',  BB.p1Weapon, A),
     bbMakeBall('right', BB.p2Weapon, A),
   ];
+  BB.obstacles = [];
+  bbBuildObstacles(A);
 
   id('arcadeControls').innerHTML = '';
 }
@@ -1250,65 +1301,119 @@ function bbMakeBall(side, key, A) {
 function bbArena() {
   const W = canvas.width, H = canvas.height;
   const pad = 12;
-  return { x: pad, y: 80, w: W - pad*2, h: H * 0.58 };
+  const map = BB_ARENAS[BB.arena];
+  const base = { x: pad, y: 80, w: W - pad*2, h: H * 0.58 };
+  if (map.shape === 'circle') {
+    const cx = W / 2, cy = 80 + (H*0.58)/2;
+    const r  = Math.min(base.w, base.h) / 2 - 4;
+    return { ...base, circle: true, cx, cy, cr: r };
+  }
+  return base;
+}
+
+// Build obstacle list for current arena (called on fight start)
+function bbBuildObstacles(A) {
+  const map = BB_ARENAS[BB.arena];
+  BB.obstacles = [];
+  if (map.special === 'platforms') {
+    const pw = A.w * 0.28, ph = 14;
+    BB.obstacles.push({ x: A.x + A.w*0.12, y: A.y + A.h*0.55, w: pw, h: ph, type:'platform' });
+    BB.obstacles.push({ x: A.x + A.w*0.60, y: A.y + A.h*0.38, w: pw, h: ph, type:'platform' });
+  }
+  if (map.special === 'pillars') {
+    const pw = 18, ph = A.h * 0.45;
+    BB.obstacles.push({ x: A.x + A.w*0.28 - pw/2, y: A.y + A.h - ph, w: pw, h: ph, type:'pillar' });
+    BB.obstacles.push({ x: A.x + A.w*0.72 - pw/2, y: A.y + A.h - ph, w: pw, h: ph, type:'pillar' });
+  }
 }
 
 // ── PHYSICS ───────────────────────────────────────────────────────────
-const BBG = 0.42;   // gravity
-const BBC = 0.72;   // bounce coefficient
-
 function bbPhysics() {
   if (BB.phase !== 'fight') return;
   BB.matchTime++;
   if (BB.shake > 0) BB.shake--;
 
-  const A = bbArena();
-  const dt = BB.shake > 8 ? 0.3 : 1;
+  const A   = bbArena();
+  const MAP = BB_ARENAS[BB.arena];
+  const BBG = MAP.gravity;
+  const BBC = MAP.bounce;
+  const dt  = BB.shake > 8 ? 0.3 : 1;
 
   for (const b of BB.balls) {
     if (!b.alive) { b.deathTimer++; continue; }
 
-    // Timers
     if (b.hitTimer  > 0) b.hitTimer--;
     if (b.parryTimer> 0) b.parryTimer--;
     if (b.stunTimer > 0) b.stunTimer--;
     if (b.arrowTimer> 0) b.arrowTimer--;
 
-    // Regen
     if (b.regen > 0 && BB.matchTime % 60 === 0) b.hp = Math.min(b.maxHp, b.hp + b.regen);
+    if (b.stunTimer > 0) continue;
 
-    if (b.stunTimer > 0) continue; // stunned = no movement
-
-    // Spin weapon
-    b.angle += b.spin * 0.055 * dt;
+    // Spin weapon (faster on ice)
+    const spinMult = MAP.special === 'ice' ? 1.4 : 1;
+    b.angle += b.spin * 0.055 * dt * spinMult;
 
     // Gravity + movement
     b.vy += BBG * dt;
     b.x  += b.vx * dt;
     b.y  += b.vy * dt;
-    b.vx *= 0.998;
+    b.vx *= MAP.friction;
 
     // Trail
     b.trail.push({x:b.x, y:b.y});
     if (b.trail.length > 10) b.trail.shift();
 
-    // Arena collision
-    if (b.y + b.r > A.y + A.h) {
-      b.y = A.y + A.h - b.r;
-      b.vy = -Math.abs(b.vy) * BBC;
-      b.vx *= 0.80;
-    }
-    if (b.y - b.r < A.y) {
-      b.y = A.y + b.r;
-      b.vy = Math.abs(b.vy) * 0.55;
-    }
-    if (b.x - b.r < A.x) {
-      b.x = A.x + b.r;
-      b.vx = Math.abs(b.vx) * BBC;
-    }
-    if (b.x + b.r > A.x + A.w) {
-      b.x = A.x + A.w - b.r;
-      b.vx = -Math.abs(b.vx) * BBC;
+    // ── CIRCLE ARENA (Space) ──
+    if (A.circle) {
+      const dx2 = b.x - A.cx, dy2 = b.y - A.cy;
+      const d2 = Math.hypot(dx2, dy2);
+      if (d2 + b.r > A.cr) {
+        const nx2 = dx2/d2, ny2 = dy2/d2;
+        b.x = A.cx + nx2 * (A.cr - b.r);
+        b.y = A.cy + ny2 * (A.cr - b.r);
+        const dot2 = b.vx*nx2 + b.vy*ny2;
+        b.vx -= 2*dot2*nx2*BBC; b.vy -= 2*dot2*ny2*BBC;
+        bbBurst(b.x, b.y, MAP.accent+'88', 4);
+      }
+    } else {
+      // ── RECT ARENA ──
+      if (b.y + b.r > A.y + A.h) {
+        b.y = A.y + A.h - b.r;
+        b.vy = -Math.abs(b.vy) * BBC;
+        b.vx *= 0.80;
+        // Lava damage
+        if (MAP.special === 'lava') {
+          b.hp -= 0.18;
+          if (b.hp <= 0 && b.alive) {
+            b.alive = false; b.hp = 0;
+            bbBurst(b.x, b.y, '#f97316', 30);
+            BB.shake = 20;
+            setTimeout(bbCheckResult, 700);
+          }
+          bbBurst(b.x, b.y, '#f97316', 2);
+        }
+      }
+      if (b.y - b.r < A.y) { b.y = A.y + b.r; b.vy = Math.abs(b.vy) * 0.5; }
+      if (b.x - b.r < A.x) { b.x = A.x + b.r; b.vx =  Math.abs(b.vx) * BBC; }
+      if (b.x + b.r > A.x + A.w) { b.x = A.x+A.w - b.r; b.vx = -Math.abs(b.vx) * BBC; }
+
+      // ── OBSTACLE collision ──
+      for (const obs of BB.obstacles) {
+        const closestX = Math.max(obs.x, Math.min(b.x, obs.x + obs.w));
+        const closestY = Math.max(obs.y, Math.min(b.y, obs.y + obs.h));
+        const dd = Math.hypot(b.x - closestX, b.y - closestY);
+        if (dd < b.r) {
+          const overlapX = b.x - closestX, overlapY = b.y - closestY;
+          const ol = Math.hypot(overlapX, overlapY) || 1;
+          const push = b.r - dd + 1;
+          b.x += (overlapX/ol) * push;
+          b.y += (overlapY/ol) * push;
+          // Bounce based on which face was hit
+          if (Math.abs(overlapX) > Math.abs(overlapY)) b.vx *= -BBC;
+          else { b.vy *= -BBC; b.vx *= 0.85; }
+        }
+      }
     }
 
     // AI: track enemy
@@ -1316,20 +1421,29 @@ function bbPhysics() {
     if (!enemy) continue;
 
     const dx = enemy.x - b.x;
-    const onFloor = b.y + b.r >= A.y + A.h - 3;
+    const onFloor = A.circle
+      ? Math.hypot(b.x-A.cx, b.y-A.cy) > A.cr * 0.8
+      : b.y + b.r >= A.y + A.h - 3;
 
-    // Seek horizontally — moderate acceleration
-    b.vx += Math.sign(dx) * 0.32 * dt;
+    // Seek
+    const seekMult = MAP.special === 'ice' ? 0.15 : 0.32; // ice = less control
+    b.vx += Math.sign(dx) * seekMult * dt;
     const maxV = b.spd * 1.8;
     if (Math.abs(b.vx) > maxV) b.vx = Math.sign(b.vx) * maxV;
 
-    // Jump — random but more frequent when enemy is across or above
-    if (onFloor) {
+    // Jump (not in space - no floor)
+    if (!A.circle && onFloor) {
       const shouldJump = Math.random() < (Math.abs(dx) > 80 ? 0.06 : 0.03);
       if (shouldJump) b.vy = -(b.spd * 1.6 + rnd(1, 2));
     }
+    // Space: thrust toward enemy
+    if (A.circle && BB.matchTime % 25 === 0) {
+      const dd2 = Math.hypot(dx, enemy.y - b.y) || 1;
+      b.vx += (dx/dd2) * b.spd * 0.4;
+      b.vy += ((enemy.y-b.y)/dd2) * b.spd * 0.4;
+    }
 
-    // Arrow — shoot if bow
+    // Arrow
     if (b.weaponKey === 'bow' && b.arrowTimer <= 0 && Math.abs(dx) > b.r * 2) {
       const ddist = Math.hypot(dx, enemy.y - b.y) || 1;
       const aspd = b.spd * 2.8;
@@ -1442,9 +1556,10 @@ function bbPhysics() {
 
   // ── Projectiles ──────────────────────────────────────────────────
   const A2 = bbArena();
+  const MAP2 = BB_ARENAS[BB.arena];
   for (let i = BB.projectiles.length-1; i >= 0; i--) {
     const p = BB.projectiles[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life -= 0.008;
+    p.x += p.vx; p.y += p.vy; if (MAP2.gravity > 0) p.vy += 0.18; p.life -= 0.008;
     if (p.x<A2.x||p.x>A2.x+A2.w||p.y>A2.y+A2.h||p.life<=0) { BB.projectiles.splice(i,1); continue; }
     for (const b of BB.balls) {
       if (!b.alive || b.side===p.owner) continue;
@@ -1525,25 +1640,129 @@ function bbDraw() {
   ctx.globalAlpha = 1;
 
   // ── Arena ──
-  ctx.fillStyle = MAP.floor;
-  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
+  if (A.circle) {
+    // SPACE: circular arena
+    ctx.fillStyle = MAP.floor;
+    ctx.beginPath(); ctx.arc(A.cx, A.cy, A.cr, 0, Math.PI*2); ctx.fill();
+    // Stars inside
+    for (let i=0; i<20; i++) {
+      const sx = A.cx + Math.cos(i*2.4)*A.cr*(0.3+i%3*0.2);
+      const sy = A.cy + Math.sin(i*1.7)*A.cr*(0.3+i%2*0.25);
+      ctx.fillStyle='#ffffff'; ctx.globalAlpha=0.25;
+      ctx.beginPath(); ctx.arc(sx,sy,1,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    // Glow border
+    ctx.strokeStyle=MAP.border; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(A.cx,A.cy,A.cr,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle=MAP.accent+'50'; ctx.lineWidth=14;
+    ctx.beginPath(); ctx.arc(A.cx,A.cy,A.cr+2,0,Math.PI*2); ctx.stroke();
+    // Center label
+    ctx.strokeStyle=MAP.border; ctx.lineWidth=1; ctx.globalAlpha=0.15; ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.moveTo(A.cx-A.cr,A.cy); ctx.lineTo(A.cx+A.cr,A.cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(A.cx,A.cy-A.cr); ctx.lineTo(A.cx,A.cy+A.cr); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  } else {
+    // RECT arenas
+    ctx.fillStyle = MAP.floor;
+    roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
 
-  // Grid
-  ctx.strokeStyle = MAP.wall; ctx.lineWidth = 1;
-  for (let gx=A.x+28; gx<A.x+A.w; gx+=28) { ctx.globalAlpha=0.6; ctx.beginPath(); ctx.moveTo(gx,A.y); ctx.lineTo(gx,A.y+A.h); ctx.stroke(); }
-  for (let gy=A.y+28; gy<A.y+A.h; gy+=28) { ctx.beginPath(); ctx.moveTo(A.x,gy); ctx.lineTo(A.x+A.w,gy); ctx.stroke(); }
-  ctx.globalAlpha = 1;
+    // Grid
+    ctx.strokeStyle = MAP.wall; ctx.lineWidth = 1;
+    for (let gx=A.x+28; gx<A.x+A.w; gx+=28) { ctx.globalAlpha=0.5; ctx.beginPath(); ctx.moveTo(gx,A.y); ctx.lineTo(gx,A.y+A.h); ctx.stroke(); }
+    for (let gy=A.y+28; gy<A.y+A.h; gy+=28) { ctx.beginPath(); ctx.moveTo(A.x,gy); ctx.lineTo(A.x+A.w,gy); ctx.stroke(); }
+    ctx.globalAlpha=1;
 
-  // Center divider
-  ctx.setLineDash([6,8]); ctx.strokeStyle=MAP.border; ctx.lineWidth=1; ctx.globalAlpha=0.2;
-  ctx.beginPath(); ctx.moveTo(A.x+A.w/2,A.y); ctx.lineTo(A.x+A.w/2,A.y+A.h); ctx.stroke();
-  ctx.setLineDash([]); ctx.globalAlpha=1;
+    // Center divider
+    ctx.setLineDash([6,8]); ctx.strokeStyle=MAP.border; ctx.lineWidth=1; ctx.globalAlpha=0.2;
+    ctx.beginPath(); ctx.moveTo(A.x+A.w/2,A.y); ctx.lineTo(A.x+A.w/2,A.y+A.h); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
 
-  // Arena glow border
-  ctx.strokeStyle = MAP.border; ctx.lineWidth = 2.5;
-  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.stroke();
-  ctx.strokeStyle = MAP.accent+'40'; ctx.lineWidth = 12;
-  roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 10); ctx.stroke();
+    // ── LAVA (Volcano) ──
+    if (MAP.special === 'lava') {
+      const lh = MAP.lavaH || 18;
+      const ly = A.y + A.h - lh;
+      const lg = ctx.createLinearGradient(0, ly, 0, ly+lh);
+      lg.addColorStop(0, '#f97316aa');
+      lg.addColorStop(1, '#ea580c');
+      ctx.fillStyle = lg;
+      ctx.fillRect(A.x, ly, A.w, lh);
+      // Lava bubbles
+      const t = BB.matchTime;
+      for (let i=0; i<8; i++) {
+        const bx = A.x + 30 + i*((A.w-60)/7);
+        const by = ly + 5 + Math.sin(t*0.08+i)*4;
+        ctx.fillStyle='#fb923c'; ctx.globalAlpha=0.7;
+        ctx.beginPath(); ctx.arc(bx,by,3+Math.sin(t*0.12+i)*1.5,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      // LAVA warning text
+      ctx.fillStyle='#f97316'; ctx.globalAlpha=0.5;
+      ctx.font=`bold 9px 'Orbitron',monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('LAVA', A.x+A.w/2, ly+lh/2);
+      ctx.globalAlpha=1;
+    }
+
+    // ── ICE effect ──
+    if (MAP.special === 'ice') {
+      // Ice crystals on walls
+      ctx.strokeStyle = '#93c5fd'; ctx.lineWidth=1.5; ctx.globalAlpha=0.3;
+      for (let i=0; i<5; i++) {
+        const ix=A.x+20+i*((A.w-40)/4), iy=A.y+A.h-2;
+        ctx.beginPath(); ctx.moveTo(ix,iy); ctx.lineTo(ix-4,iy-12); ctx.lineTo(ix,iy-18); ctx.lineTo(ix+4,iy-12); ctx.closePath(); ctx.stroke();
+      }
+      // Frost corners
+      ctx.strokeStyle='#bfdbfe'; ctx.lineWidth=1; ctx.globalAlpha=0.2;
+      [[A.x,A.y],[A.x+A.w,A.y],[A.x,A.y+A.h],[A.x+A.w,A.y+A.h]].forEach(([fx,fy])=>{
+        for(let j=0;j<5;j++){const a=Math.random()*Math.PI*2,l=rnd(8,22);ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(fx+Math.cos(a)*l,fy+Math.sin(a)*l);ctx.stroke();}
+      });
+      ctx.globalAlpha=1;
+    }
+
+    // ── PLATFORMS (Jungle) ──
+    for (const obs of BB.obstacles) {
+      if (obs.type === 'platform') {
+        // Wooden platform
+        ctx.fillStyle='#3a2010';
+        roundRect(ctx, obs.x, obs.y, obs.w, obs.h, 4); ctx.fill();
+        ctx.fillStyle='#7a4a20'; ctx.fillRect(obs.x+2, obs.y+2, obs.w-4, 4);
+        ctx.strokeStyle='#4ade80'; ctx.lineWidth=1.5;
+        roundRect(ctx, obs.x, obs.y, obs.w, obs.h, 4); ctx.stroke();
+        // Moss on top
+        ctx.fillStyle='#4ade8055';
+        ctx.fillRect(obs.x+2, obs.y, obs.w-4, 3);
+        // Vines hanging
+        ctx.strokeStyle='#4ade80'; ctx.lineWidth=1; ctx.globalAlpha=0.4;
+        for(let v=0;v<3;v++){
+          const vx=obs.x+obs.w*0.2+v*(obs.w*0.3);
+          ctx.beginPath(); ctx.moveTo(vx,obs.y+obs.h);
+          ctx.bezierCurveTo(vx+5,obs.y+obs.h+12,vx-3,obs.y+obs.h+20,vx,obs.y+obs.h+28);
+          ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+      }
+      if (obs.type === 'pillar') {
+        // Stone pillar
+        const pg = ctx.createLinearGradient(obs.x, 0, obs.x+obs.w, 0);
+        pg.addColorStop(0,'#2a2030'); pg.addColorStop(0.4,'#3a3050'); pg.addColorStop(1,'#1a1025');
+        ctx.fillStyle=pg; ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        // Stone blocks
+        ctx.strokeStyle='#1a1025'; ctx.lineWidth=1;
+        for(let s=0;s<4;s++) ctx.strokeRect(obs.x+1,obs.y+s*obs.h/4,obs.w-2,obs.h/4);
+        // Highlight
+        ctx.fillStyle='rgba(255,255,255,0.06)';
+        ctx.fillRect(obs.x+2,obs.y,4,obs.h);
+        ctx.strokeStyle=MAP.border; ctx.lineWidth=1.5;
+        ctx.strokeRect(obs.x,obs.y,obs.w,obs.h);
+      }
+    }
+
+    // Arena glow border
+    ctx.strokeStyle = MAP.border; ctx.lineWidth = 2.5;
+    roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.stroke();
+    ctx.strokeStyle = MAP.accent+'40'; ctx.lineWidth = 12;
+    roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 10); ctx.stroke();
+  }
 
   // ── Particles ──
   for (const p of BB.particles) {
@@ -1720,12 +1939,16 @@ function bbDraw() {
     ctx.fillText(`${Math.ceil(Math.max(0,b.hp))}`, isLeft?bx+halfW-4:bx+4, barY-3);
   }
 
-  // ── TIMER ──────────────────────────────────────────────────────────
+  // ── TIMER + ARENA INFO ─────────────────────────────────────────────
   if (BB.phase === 'fight') {
     const secs = Math.floor(BB.matchTime / 60);
     ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.028}px 'Orbitron', monospace`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(secs+'s', A.x+A.w/2, A.y-22);
+    ctx.fillText(secs+'s', A.circle ? A.cx : A.x+A.w/2, (A.circle ? A.cy-A.cr : A.y) - 22);
+    // Arena name small
+    const arMap = BB_ARENAS[BB.arena];
+    ctx.fillStyle = arMap.border; ctx.font = `${W*0.022}px 'Orbitron', monospace`;
+    ctx.fillText(arMap.emoji + ' ' + arMap.desc.toUpperCase(), A.circle ? A.cx : A.x+A.w/2, (A.circle ? A.cy-A.cr : A.y) - 8);
   }
 
   // ── TOP LABELS ─────────────────────────────────────────────────────
