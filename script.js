@@ -1109,871 +1109,827 @@ id('firstSelect').addEventListener('change',e=>{ firstMode=e.target.value; local
 //  • Выбор оружия → бой волнами → апгрейды
 // ══════════════════════════════════════════════════════════════════
 
-const BB = {};
+// ══════════════════════════════════════════════════════════════════════
+//  ⚔️  BALL BATTLE  –  Weapon Ball Fight simulator (Earclacks style)
+//  Арена · Физика гравитации · Оружие крутится · HP бары · Турнир
+// ══════════════════════════════════════════════════════════════════════
 
-BB.WEAPONS = {
-  sword:     { name:'SWORD',     color:'#e53e3e', hp:100, spd:4.0, dmg:12, reach:38, spinSpd:2.8,  special:'parry',      desc:'Parries on clash',    w:38, h:8  },
-  hammer:    { name:'HAMMER',    color:'#f97316', hp:130, spd:3.2, dmg:22, reach:30, spinSpd:1.8,  special:'knockback',  desc:'Ignores parry',       w:30, h:14 },
-  scythe:    { name:'SCYTHE',    color:'#a855f7', hp:90,  spd:4.2, dmg:14, reach:42, spinSpd:3.2,  special:'lifesteal',  desc:'Steals HP on hit',    w:42, h:10 },
-  spear:     { name:'SPEAR',     color:'#3b82f6', hp:100, spd:3.8, dmg:13, reach:50, spinSpd:2.4,  special:'pierce',     desc:'Long reach',          w:50, h:6  },
-  bow:       { name:'BOW',       color:'#22c55e', hp:80,  spd:4.5, dmg:10, reach:28, spinSpd:2.6,  special:'ranged',     desc:'Shoots arrows',       w:28, h:18 },
-  shield:    { name:'SHIELD',    color:'#06b6d4', hp:160, spd:2.8, dmg:8,  reach:26, spinSpd:2.0,  special:'block',      desc:'Blocks attacks',      w:26, h:26 },
-  dagger:    { name:'DAGGER',    color:'#94a3b8', hp:80,  spd:5.2, dmg:9,  reach:24, spinSpd:4.5,  special:'fast',       desc:'Very fast',           w:24, h:7  },
-  lightning: { name:'LIGHTNING', color:'#fbbf24', hp:90,  spd:4.0, dmg:16, reach:34, spinSpd:3.0,  special:'chain',      desc:'Chains on hit',       w:34, h:10 },
+// ── WEAPON DATA ──────────────────────────────────────────────────────
+const BB_WEAPONS = {
+  sword:      { name:'SWORD',       color:'#e53e3e', ballColor:'#c0392b', hp:100, spd:4.0, dmg:12, reach:40, spin:2.8,  special:'parry',    desc:'Parries clashes',    rarity:'common'   },
+  hammer:     { name:'HAMMER',      color:'#f97316', ballColor:'#c0550a', hp:130, spd:3.0, dmg:22, reach:32, spin:1.6,  special:'knockback',desc:'Ignores parry',      rarity:'uncommon' },
+  scythe:     { name:'SCYTHE',      color:'#a855f7', ballColor:'#7c3aed', hp:90,  spd:4.2, dmg:14, reach:44, spin:3.2,  special:'lifesteal',desc:'Steals HP',          rarity:'uncommon' },
+  spear:      { name:'SPEAR',       color:'#3b82f6', ballColor:'#1d4ed8', hp:100, spd:3.8, dmg:13, reach:52, spin:2.4,  special:'pierce',   desc:'Extra reach',        rarity:'common'   },
+  dagger:     { name:'DAGGER',      color:'#94a3b8', ballColor:'#64748b', hp:80,  spd:5.2, dmg:9,  reach:24, spin:4.8,  special:'fast',     desc:'Very fast spin',     rarity:'common'   },
+  bow:        { name:'BOW',         color:'#22c55e', ballColor:'#15803d', hp:80,  spd:4.5, dmg:10, reach:30, spin:2.6,  special:'ranged',   desc:'Fires arrows',       rarity:'uncommon' },
+  shield:     { name:'SHIELD',      color:'#06b6d4', ballColor:'#0e7490', hp:160, spd:2.8, dmg:8,  reach:28, spin:2.0,  special:'block',    desc:'Blocks attacks',     rarity:'uncommon' },
+  lightning:  { name:'LIGHTNING',   color:'#fbbf24', ballColor:'#d97706', hp:90,  spd:4.0, dmg:16, reach:36, spin:3.0,  special:'chain',    desc:'Chains on hit',      rarity:'rare'     },
+  wrench:     { name:'WRENCH',      color:'#78716c', ballColor:'#57534e', hp:110, spd:3.5, dmg:18, reach:34, spin:2.2,  special:'stun',     desc:'Stuns on hit',       rarity:'uncommon' },
+  shuriken:   { name:'SHURIKEN',    color:'#e2e8f0', ballColor:'#94a3b8', hp:75,  spd:5.5, dmg:8,  reach:22, spin:6.0,  special:'multi',    desc:'Multi-hit spin',     rarity:'rare'     },
+  axe:        { name:'AXE',         color:'#ef4444', ballColor:'#b91c1c', hp:120, spd:3.2, dmg:20, reach:38, spin:1.8,  special:'heavy',    desc:'Heavy damage',       rarity:'uncommon' },
+  boomerang:  { name:'BOOMERANG',   color:'#f59e0b', ballColor:'#b45309', hp:85,  spd:4.8, dmg:11, reach:32, spin:3.4,  special:'return',   desc:'Returns on miss',    rarity:'rare'     },
 };
 
-BB.UPGRADES = [
-  { id:'dmg',   name:'POWER UP',   emoji:'💪', desc:'+30% damage',     apply: b => b.dmg   *= 1.3  },
-  { id:'spd',   name:'SPEED UP',   emoji:'⚡', desc:'+20% speed',      apply: b => { b.spd *= 1.2; b.spinSpd *= 1.2; } },
-  { id:'hp',    name:'HEAL',       emoji:'❤️', desc:'Restore 50 HP',   apply: b => b.hp = Math.min(b.maxHp, b.hp + 50) },
-  { id:'big',   name:'GROW',       emoji:'🔮', desc:'+25% size + dmg', apply: b => { b.r *= 1.25; b.dmg *= 1.1; } },
-  { id:'armor', name:'ARMOR',      emoji:'🛡', desc:'-35% damage taken',apply: b => b.armor = Math.min(0.65, (b.armor||0)+0.35) },
-  { id:'regen', name:'REGEN',      emoji:'💚', desc:'+2 HP/sec',        apply: b => b.regen = (b.regen||0)+2 },
-  { id:'reach', name:'LONG REACH', emoji:'🗡', desc:'+12 weapon reach', apply: b => b.reach += 12 },
-  { id:'clone', name:'TWIN BALL',  emoji:'👥', desc:'Spawn ally ball',  apply: null },
-];
+const BB_RARITY_COLOR = { common:'#94a3b8', uncommon:'#4ade80', rare:'#a855f7' };
 
-BB.MAPS = {
-  dungeon: { name:'DUNGEON',  emoji:'🏰', bg:'#0d0d15', grid:'#16152a', border:'#7c6fff', glow:'rgba(124,111,255,0.25)', floor:'#12101e' },
-  volcano: { name:'VOLCANO',  emoji:'🌋', bg:'#150500', grid:'#241000', border:'#f97316', glow:'rgba(249,115,22,0.25)',  floor:'#1a0800' },
-  ice:     { name:'ICE CAVE', emoji:'❄️', bg:'#06090f', grid:'#0c1220', border:'#60a5fa', glow:'rgba(96,165,250,0.25)', floor:'#0a1025' },
-  jungle:  { name:'JUNGLE',   emoji:'🌿', bg:'#060e06', grid:'#0b1a0b', border:'#4ade80', glow:'rgba(74,222,128,0.25)', floor:'#081208' },
-  space:   { name:'SPACE',    emoji:'🚀', bg:'#030308', grid:'#080815', border:'#e879f9', glow:'rgba(232,121,249,0.25)',floor:'#06060e' },
+// ── ARENAS ───────────────────────────────────────────────────────────
+const BB_ARENAS = {
+  dungeon:  { name:'DUNGEON',   emoji:'🏰', bg:'#09090f', floor:'#13122a', wall:'#1a1835', border:'#7c6fff', accent:'#a78bfa' },
+  volcano:  { name:'VOLCANO',   emoji:'🌋', bg:'#0f0600', floor:'#1e0d00', wall:'#2a1400', border:'#f97316', accent:'#fb923c' },
+  icecave:  { name:'ICE CAVE',  emoji:'❄️', bg:'#04060e', floor:'#0a0f20', wall:'#101828', border:'#60a5fa', accent:'#93c5fd' },
+  jungle:   { name:'JUNGLE',    emoji:'🌿', bg:'#030903', floor:'#061206', wall:'#0c1e0c', border:'#4ade80', accent:'#86efac' },
+  space:    { name:'SPACE',     emoji:'🚀', bg:'#02020a', floor:'#06060e', wall:'#0a0a18', border:'#e879f9', accent:'#f0abfc' },
+  castle:   { name:'CASTLE',    emoji:'🏯', bg:'#08060a', floor:'#120e18', wall:'#1a1622', border:'#c084fc', accent:'#d8b4fe' },
 };
 
-// Runtime state
-BB.state = {
-  phase: 'select', // select | fight | upgrade | result
-  playerWeapon: 'sword',
-  currentMap: localStorage.getItem('bbMap') || 'dungeon',
-  wave: 1,
-  roundWins: [0, 0],
+// ── STATE ────────────────────────────────────────────────────────────
+let BB = {
+  phase: 'menu',   // menu | fight | result
+  p1Weapon: 'sword',
+  p2Weapon: null,  // null = random enemy
+  arena: 'dungeon',
   balls: [],
   projectiles: [],
   particles: [],
-  upgradeOptions: [],
   raf: null,
-  fightTimer: 0,
-  shake: 0,
+  result: null,    // 'p1' | 'p2' | 'draw'
+  matchTime: 0,
   selectHover: null,
+  shake: 0,
+  bgStars: [],
 };
 
-// ── OPEN ─────────────────────────────────────────────────────────
+// ── OPEN ─────────────────────────────────────────────────────────────
 function openBallBattle() {
   stopArcade();
-  BB.state.phase = 'select';
-  BB.state.wave = 1;
-  BB.state.roundWins = [0,0];
-  BB.state.balls = [];
-  BB.state.projectiles = [];
-  BB.state.particles = [];
-  setupCanvas();
-  bbBuildControls();
+  BB.phase = 'menu';
+  BB.p1Weapon = localStorage.getItem('bb_p1w') || 'sword';
+  BB.arena    = localStorage.getItem('bb_arena') || 'dungeon';
+  BB.bgStars  = Array.from({length:40}, () => ({
+    x: rnd(0, canvas.width), y: rnd(0, canvas.height),
+    r: rnd(0.5, 2), a: rnd(0.05, 0.3)
+  }));
+  bbBuildUI();
   bbLoop();
 }
 
-function bbBuildControls() {
+// ── BUILD CONTROLS UI ─────────────────────────────────────────────────
+function bbBuildUI() {
   const ctrl = id('arcadeControls');
-  const mapKeys = Object.keys(BB.MAPS);
+  const arenaKeys = Object.keys(BB_ARENAS);
+  const selArena = BB.arena;
   ctrl.innerHTML = `
     <div style="margin-bottom:8px">
       <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">ARENA</div>
-      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
-        ${mapKeys.map(k=>`<button class="bb-map-btn" data-map="${k}" style="flex-shrink:0;font-family:var(--font-hd);font-size:9px;letter-spacing:1px;padding:6px 11px;border-radius:16px;cursor:pointer;white-space:nowrap;border:1.5px solid ${k===BB.state.currentMap?BB.MAPS[k].border:'var(--border)'};background:${k===BB.state.currentMap?BB.MAPS[k].border+'33':'var(--bg3)'};color:${k===BB.state.currentMap?'#fff':'var(--sub)'}">${BB.MAPS[k].emoji} ${BB.MAPS[k].name}</button>`).join('')}
+      <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none">
+        ${arenaKeys.map(k=>{
+          const a=BB_ARENAS[k]; const sel=k===selArena;
+          return `<button class="bb-arena" data-a="${k}" style="flex-shrink:0;font-family:var(--font-hd);font-size:9px;letter-spacing:1px;padding:6px 11px;border-radius:16px;cursor:pointer;white-space:nowrap;border:1.5px solid ${sel?a.border:'var(--border)'};background:${sel?a.border+'25':'var(--bg3)'};color:${sel?'#fff':'var(--sub)'}">${a.emoji} ${a.name}</button>`;
+        }).join('')}
       </div>
     </div>
     <button class="start-btn" id="bbFightBtn" style="max-width:300px;margin:0 auto;display:block">⚔️ FIGHT!</button>`;
 
-  ctrl.querySelectorAll('.bb-map-btn').forEach(btn => {
+  ctrl.querySelectorAll('.bb-arena').forEach(btn => {
     btn.addEventListener('click', () => {
-      BB.state.currentMap = btn.dataset.map;
-      localStorage.setItem('bbMap', BB.state.currentMap);
-      bbBuildControls();
+      BB.arena = btn.dataset.a;
+      localStorage.setItem('bb_arena', BB.arena);
+      bbBuildUI();
     });
   });
-  id('bbFightBtn').addEventListener('click', () => {
-    BB.state.phase = 'fight';
-    bbStartWave();
-    id('arcadeControls').innerHTML = '';
-  });
+  id('bbFightBtn').addEventListener('click', bbStartFight);
 }
 
-// ── BALL FACTORY ─────────────────────────────────────────────────
-function bbMakeBall(side, weaponKey, isPlayer) {
+// ── START FIGHT ───────────────────────────────────────────────────────
+function bbStartFight() {
+  // Pick random enemy weapon (different from player)
+  const keys = Object.keys(BB_WEAPONS).filter(k => k !== BB.p1Weapon);
+  BB.p2Weapon = keys[Math.floor(Math.random() * keys.length)];
+  BB.phase = 'fight';
+  BB.result = null;
+  BB.matchTime = 0;
+  BB.projectiles = [];
+  BB.particles = [];
+
   const W = canvas.width, H = canvas.height;
-  const wep = BB.WEAPONS[weaponKey];
-  const ARENA = bbGetArena();
+  const A = bbArena();
+
+  BB.balls = [
+    bbMakeBall('left',  BB.p1Weapon, A),
+    bbMakeBall('right', BB.p2Weapon, A),
+  ];
+
+  id('arcadeControls').innerHTML = '';
+}
+
+function bbMakeBall(side, key, A) {
+  const w = BB_WEAPONS[key];
   return {
-    x: side === 'left' ? ARENA.x + ARENA.w * 0.22 : ARENA.x + ARENA.w * 0.78,
-    y: ARENA.y + ARENA.h * 0.45,
-    vx: side === 'left' ? wep.spd * 0.4 : -wep.spd * 0.4,
-    vy: -wep.spd * 1.4,
-    r: 22,
-    hp: wep.hp,
-    maxHp: wep.hp,
-    dmg: wep.dmg,
-    spd: wep.spd,
-    spinSpd: wep.spinSpd,
-    reach: wep.reach,
-    armor: 0,
-    regen: 0,
-    color: side === 'left' ? '#ff6b9d' : '#6bdbff',
-    weaponKey,
+    x:  side==='left' ? A.x + A.w*0.22 : A.x + A.w*0.78,
+    y:  A.y + A.h * 0.4,
+    vx: side==='left' ? w.spd*0.5 : -w.spd*0.5,
+    vy: -(w.spd * 1.8 + rnd(0, 1.5)),
+    r:  24,
+    hp: w.hp, maxHp: w.hp,
+    dmg: w.dmg, spd: w.spd,
+    reach: w.reach,
+    spin: w.spin * (side==='left' ? 1 : -1),
+    armor: 0, regen: 0,
+    color: w.ballColor,
+    rimColor: w.color,
+    weaponKey: key,
     side,
-    isPlayer,
-    angle: side === 'left' ? 0 : Math.PI,   // weapon angle
-    hitTimer: 0,
-    parryTimer: 0,
-    arrowTimer: 0,
+    angle: side==='left' ? 0 : Math.PI,
+    hitTimer: 0, parryTimer: 0, stunTimer: 0, arrowTimer: 0,
     alive: true,
     trail: [],
+    deathTimer: 0,
   };
 }
 
-function bbGetArena() {
+function bbArena() {
   const W = canvas.width, H = canvas.height;
-  const pad = 14;
-  const aH = H * 0.62;
-  const aW = W - pad * 2;
-  return { x: pad, y: pad + H * 0.06, w: aW, h: aH };
+  const pad = 12;
+  return { x: pad, y: 80, w: W - pad*2, h: H * 0.58 };
 }
 
-// ── WAVE START ────────────────────────────────────────────────────
-function bbStartWave() {
-  const playerWep = BB.state.playerWeapon;
-  const enemyKeys = Object.keys(BB.WEAPONS).filter(k=>k!==playerWep);
-  const enemyWep = enemyKeys[Math.floor(Math.random()*enemyKeys.length)];
-
-  const player = bbMakeBall('left', playerWep, true);
-  const enemy  = bbMakeBall('right', enemyWep, false);
-
-  // Scale enemy per wave
-  enemy.hp    = Math.round(BB.WEAPONS[enemyWep].hp * (1 + (BB.state.wave-1) * 0.2));
-  enemy.maxHp = enemy.hp;
-  enemy.dmg   *= (1 + (BB.state.wave-1) * 0.12);
-  enemy.spd   *= (1 + (BB.state.wave-1) * 0.05);
-
-  BB.state.balls = [player, enemy];
-  BB.state.projectiles = [];
-  BB.state.fightTimer = 0;
-}
-
-// ── PHYSICS ───────────────────────────────────────────────────────
-const BB_GRAVITY  = 0.38;
-const BB_BOUNCE   = 0.68;
-const BB_FRICTION = 0.994;
+// ── PHYSICS ───────────────────────────────────────────────────────────
+const BBG = 0.42;   // gravity
+const BBC = 0.72;   // bounce coefficient
 
 function bbPhysics() {
-  const A = bbGetArena();
-  const dt = BB.state.phase === 'fight' ? (BB.state.shake > 0 ? 0.4 : 1) : 0;
-  if (!dt) return;
-  BB.state.fightTimer++;
-  if (BB.state.shake > 0) BB.state.shake--;
+  if (BB.phase !== 'fight') return;
+  BB.matchTime++;
+  if (BB.shake > 0) BB.shake--;
 
-  for (const b of BB.state.balls) {
-    if (!b.alive) continue;
+  const A = bbArena();
+  const dt = BB.shake > 8 ? 0.3 : 1;
+
+  for (const b of BB.balls) {
+    if (!b.alive) { b.deathTimer++; continue; }
+
+    // Timers
+    if (b.hitTimer  > 0) b.hitTimer--;
+    if (b.parryTimer> 0) b.parryTimer--;
+    if (b.stunTimer > 0) b.stunTimer--;
+    if (b.arrowTimer> 0) b.arrowTimer--;
 
     // Regen
-    if (b.regen > 0 && BB.state.fightTimer % 60 === 0) b.hp = Math.min(b.maxHp, b.hp + b.regen);
+    if (b.regen > 0 && BB.matchTime % 60 === 0) b.hp = Math.min(b.maxHp, b.hp + b.regen);
 
-    // Rotate weapon
-    b.angle += b.spinSpd * 0.055 * (b.side==='left' ? 1 : -1);
+    if (b.stunTimer > 0) continue; // stunned = no movement
 
-    // Gravity
-    b.vy += BB_GRAVITY;
-    b.x  += b.vx * BB_FRICTION;
-    b.y  += b.vy;
+    // Spin weapon
+    b.angle += b.spin * 0.055 * dt;
+
+    // Gravity + movement
+    b.vy += BBG * dt;
+    b.x  += b.vx * dt;
+    b.y  += b.vy * dt;
+    b.vx *= 0.998;
 
     // Trail
     b.trail.push({x:b.x, y:b.y});
-    if (b.trail.length > 8) b.trail.shift();
+    if (b.trail.length > 10) b.trail.shift();
 
-    // Floor
+    // Arena collision
     if (b.y + b.r > A.y + A.h) {
       b.y = A.y + A.h - b.r;
-      b.vy *= -BB_BOUNCE;
-      b.vx *= 0.82;
+      b.vy = -Math.abs(b.vy) * BBC;
+      b.vx *= 0.80;
     }
-    // Ceiling
-    if (b.y - b.r < A.y) { b.y = A.y + b.r; b.vy = Math.abs(b.vy) * 0.5; }
-    // Walls
-    if (b.x - b.r < A.x) { b.x = A.x + b.r; b.vx = Math.abs(b.vx) * BB_BOUNCE; }
-    if (b.x + b.r > A.x + A.w) { b.x = A.x + A.w - b.r; b.vx = -Math.abs(b.vx) * BB_BOUNCE; }
+    if (b.y - b.r < A.y) {
+      b.y = A.y + b.r;
+      b.vy = Math.abs(b.vy) * 0.55;
+    }
+    if (b.x - b.r < A.x) {
+      b.x = A.x + b.r;
+      b.vx = Math.abs(b.vx) * BBC;
+    }
+    if (b.x + b.r > A.x + A.w) {
+      b.x = A.x + A.w - b.r;
+      b.vx = -Math.abs(b.vx) * BBC;
+    }
 
-    // Timers
-    if (b.hitTimer > 0) b.hitTimer--;
-    if (b.parryTimer > 0) b.parryTimer--;
-    if (b.arrowTimer > 0) b.arrowTimer--;
+    // AI: track enemy
+    const enemy = BB.balls.find(o => o !== b && o.alive);
+    if (!enemy) continue;
 
-    // AI: seek enemy, jump
-    const enemy = BB.state.balls.find(o => o !== b && o.alive);
-    if (enemy) {
-      const dx = enemy.x - b.x;
-      const onFloor = b.y + b.r >= A.y + A.h - 2;
+    const dx = enemy.x - b.x;
+    const onFloor = b.y + b.r >= A.y + A.h - 3;
 
-      // Seek horizontally
-      b.vx += Math.sign(dx) * 0.28;
-      const maxV = b.spd * 1.6;
-      if (Math.abs(b.vx) > maxV) b.vx = Math.sign(b.vx) * maxV;
+    // Seek horizontally — moderate acceleration
+    b.vx += Math.sign(dx) * 0.32 * dt;
+    const maxV = b.spd * 1.8;
+    if (Math.abs(b.vx) > maxV) b.vx = Math.sign(b.vx) * maxV;
 
-      // Jump when on floor and enemy is far or above
-      if (onFloor && (Math.abs(dx) > b.r * 2 || enemy.y < b.y - 30)) {
-        if (Math.random() < 0.06) b.vy = -b.spd * 1.5;
-      }
+    // Jump — random but more frequent when enemy is across or above
+    if (onFloor) {
+      const shouldJump = Math.random() < (Math.abs(dx) > 80 ? 0.06 : 0.03);
+      if (shouldJump) b.vy = -(b.spd * 1.6 + rnd(1, 2));
+    }
 
-      // Arrow shot
-      if (b.weaponKey === 'bow' && b.arrowTimer <= 0 && Math.abs(dx) > b.r * 3) {
-        const dist = Math.hypot(dx, enemy.y - b.y);
-        const spd2 = b.spd * 2.2;
-        BB.state.projectiles.push({
-          x: b.x, y: b.y,
-          vx: (dx/dist) * spd2,
-          vy: ((enemy.y - b.y)/dist) * spd2 - 1.5,
-          r: 5, dmg: b.dmg * 0.7,
-          owner: b.side,
-          color: b.color,
-          life: 1, type:'arrow'
-        });
-        b.arrowTimer = 55;
-      }
+    // Arrow — shoot if bow
+    if (b.weaponKey === 'bow' && b.arrowTimer <= 0 && Math.abs(dx) > b.r * 2) {
+      const ddist = Math.hypot(dx, enemy.y - b.y) || 1;
+      const aspd = b.spd * 2.8;
+      BB.projectiles.push({
+        x:b.x, y:b.y,
+        vx:(dx/ddist)*aspd,
+        vy:((enemy.y-b.y)/ddist)*aspd - 2,
+        r:5, dmg: b.dmg*0.75,
+        owner: b.side,
+        color: b.rimColor,
+        life: 1, angle: Math.atan2(enemy.y-b.y, dx)
+      });
+      b.arrowTimer = 50;
     }
   }
 
-  // Ball vs ball collision + weapon hit
-  const [b1, b2] = BB.state.balls.filter(b => b.alive);
-  if (b1 && b2) {
+  // ── Ball vs Ball body collision ──────────────────────────────────
+  const alive = BB.balls.filter(b => b.alive);
+  if (alive.length === 2) {
+    const [b1, b2] = alive;
     const dx = b2.x - b1.x, dy = b2.y - b1.y;
     const dist = Math.hypot(dx, dy);
 
-    // Body collision
     if (dist < b1.r + b2.r && dist > 0.1) {
       const nx = dx/dist, ny = dy/dist;
       const overlap = (b1.r + b2.r - dist) / 2;
       b1.x -= nx * overlap; b1.y -= ny * overlap;
       b2.x += nx * overlap; b2.y += ny * overlap;
+
       const dot = (b1.vx - b2.vx)*nx + (b1.vy - b2.vy)*ny;
       if (dot > 0) {
-        const imp = dot * 1.25;
+        const imp = dot * 1.4;
         b1.vx -= nx*imp; b1.vy -= ny*imp;
         b2.vx += nx*imp; b2.vy += ny*imp;
-        BB.state.shake = 8;
-        bbBurst(b1.x + nx*b1.r, b1.y + ny*b1.r, '#ffffff', 8);
+        BB.shake = 6;
+        bbBurst(b1.x+nx*b1.r, b1.y+ny*b1.r, '#ffffff88', 6);
       }
     }
 
-    // Weapon tip hit detection
-    for (const attacker of [b1, b2]) {
-      if (!attacker.alive) continue;
-      const defender = attacker === b1 ? b2 : b1;
-      if (!defender.alive) continue;
+    // ── Weapon tip collision ──────────────────────────────────────
+    for (const atk of [b1, b2]) {
+      const def = atk === b1 ? b2 : b1;
+      if (atk.hitTimer > 0) continue;
 
-      // Weapon tip world position
-      const tipAngle = attacker.angle;
-      const tipDist  = attacker.r + attacker.reach;
-      const tipX = attacker.x + Math.cos(tipAngle) * tipDist;
-      const tipY = attacker.y + Math.sin(tipAngle) * tipDist;
-      const tipToDef = Math.hypot(tipX - defender.x, tipY - defender.y);
+      // Weapon tip position
+      const tipDist = atk.r + atk.reach;
+      const tipX = atk.x + Math.cos(atk.angle) * tipDist;
+      const tipY = atk.y + Math.sin(atk.angle) * tipDist;
+      const tipToDefDist = Math.hypot(tipX - def.x, tipY - def.y);
 
-      if (tipToDef < defender.r + 6 && attacker.hitTimer <= 0) {
-        let dmg = attacker.dmg * (1 - (defender.armor || 0));
+      if (tipToDefDist > def.r + 7) continue; // no hit
 
-        // Parry
-        if (defender.weaponKey === 'sword' && attacker.weaponKey !== 'hammer') {
-          const defTipX = defender.x + Math.cos(defender.angle) * (defender.r + defender.reach);
-          const defTipY = defender.y + Math.sin(defender.angle) * (defender.r + defender.reach);
-          if (Math.hypot(defTipX - tipX, defTipY - tipY) < 18) {
-            // Parried! Bounce attacker back
-            const bx2 = attacker.x - defender.x, by2 = attacker.y - defender.y;
-            const bl = Math.hypot(bx2,by2)||1;
-            attacker.vx += (bx2/bl)*6; attacker.vy += (by2/bl)*4;
-            defender.parryTimer = 20;
-            bbBurst(tipX, tipY, '#fef08a', 10);
-            bbSpark(tipX, tipY);
-            attacker.hitTimer = 20;
-            continue;
-          }
+      let dmg = atk.dmg * (1 - (def.armor || 0));
+      let blocked = false;
+
+      // === PARRY (sword vs non-hammer) ===
+      if (def.weaponKey === 'sword' && atk.weaponKey !== 'hammer') {
+        const dTipX = def.x + Math.cos(def.angle) * (def.r + def.reach);
+        const dTipY = def.y + Math.sin(def.angle) * (def.r + def.reach);
+        if (Math.hypot(dTipX - tipX, dTipY - tipY) < 22) {
+          // Parried — reflect attacker
+          const bx = atk.x-def.x, by=atk.y-def.y, bl=Math.hypot(bx,by)||1;
+          atk.vx += (bx/bl)*7; atk.vy += (by/bl)*4 - 2;
+          def.parryTimer = 22;
+          atk.hitTimer = 22;
+          bbBurst(tipX, tipY, '#fef08a', 14);
+          bbSparkLine(atk.x, atk.y, def.x, def.y);
+          BB.shake = 10;
+          blocked = true;
         }
+      }
 
-        // Block
-        if (defender.weaponKey === 'shield' && Math.random() < 0.45) {
-          bbBurst(tipX, tipY, defender.color, 6);
-          attacker.hitTimer = 20;
-          continue;
-        }
+      // === BLOCK (shield) ===
+      if (!blocked && def.weaponKey === 'shield' && Math.random() < 0.5) {
+        bbBurst(tipX, tipY, def.rimColor, 8);
+        atk.hitTimer = 18;
+        blocked = true;
+      }
 
-        // Apply damage
-        defender.hp -= dmg;
-        defender.hp = Math.max(0, defender.hp);
-        attacker.hitTimer = 18;
-        BB.state.shake = 12;
+      if (blocked) continue;
 
-        // Knockback
-        const kdx = defender.x - attacker.x, kdy = defender.y - attacker.y;
-        const kl = Math.hypot(kdx,kdy)||1;
-        defender.vx += (kdx/kl) * 4.5;
-        defender.vy += (kdy/kl) * 3 - 1.5;
+      // === HIT ===
+      def.hp = Math.max(0, def.hp - dmg);
+      atk.hitTimer = 20;
+      BB.shake = 14;
 
-        // Specials
-        if (attacker.weaponKey === 'hammer') { defender.vx += (kdx/kl)*6; defender.vy -= 4; }
-        if (attacker.weaponKey === 'scythe') { attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg * 0.4); }
-        if (attacker.weaponKey === 'lightning') bbChainLightning(attacker, defender);
+      // Knockback
+      const kd = Math.hypot(def.x-atk.x, def.y-atk.y)||1;
+      def.vx += ((def.x-atk.x)/kd) * 5;
+      def.vy += ((def.y-atk.y)/kd) * 3.5 - 2;
 
-        bbBurst(tipX, tipY, attacker.color, 12);
-        bbSpark(tipX, tipY);
+      // Specials
+      if (atk.weaponKey === 'hammer')    { def.vx += Math.sign(def.x-atk.x)*7; def.vy -= 5; }
+      if (atk.weaponKey === 'scythe')    { atk.hp = Math.min(atk.maxHp, atk.hp + dmg*0.45); }
+      if (atk.weaponKey === 'lightning') { bbChain(atk, def); }
+      if (atk.weaponKey === 'wrench')    { def.stunTimer = 40; }
+
+      bbBurst(tipX, tipY, atk.rimColor, 16);
+      bbSparkLine(tipX, tipY, def.x, def.y);
+
+      // Death check
+      if (def.hp <= 0 && def.alive) {
+        def.alive = false;
+        bbBurst(def.x, def.y, def.rimColor, 35);
+        BB.shake = 24;
+        setTimeout(bbCheckResult, 700);
       }
     }
   }
 
-  // Projectiles
-  for (let i = BB.state.projectiles.length-1; i >= 0; i--) {
-    const p = BB.state.projectiles[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.007;
-    const A2 = bbGetArena();
-    if (p.x < A2.x || p.x > A2.x+A2.w || p.y > A2.y+A2.h || p.life <= 0) {
-      BB.state.projectiles.splice(i, 1); continue;
-    }
-    for (const b of BB.state.balls) {
-      if (!b.alive || b.side === p.owner) continue;
-      if (Math.hypot(p.x-b.x, p.y-b.y) < b.r + p.r) {
-        b.hp -= p.dmg * (1-(b.armor||0));
-        b.hp = Math.max(0, b.hp);
-        bbBurst(p.x, p.y, p.color, 7);
-        BB.state.projectiles.splice(i, 1);
+  // ── Projectiles ──────────────────────────────────────────────────
+  const A2 = bbArena();
+  for (let i = BB.projectiles.length-1; i >= 0; i--) {
+    const p = BB.projectiles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life -= 0.008;
+    if (p.x<A2.x||p.x>A2.x+A2.w||p.y>A2.y+A2.h||p.life<=0) { BB.projectiles.splice(i,1); continue; }
+    for (const b of BB.balls) {
+      if (!b.alive || b.side===p.owner) continue;
+      if (Math.hypot(p.x-b.x, p.y-b.y) < b.r+p.r) {
+        b.hp = Math.max(0, b.hp - p.dmg*(1-(b.armor||0)));
+        bbBurst(p.x,p.y,p.color,8);
+        BB.projectiles.splice(i,1);
+        if (b.hp<=0 && b.alive) { b.alive=false; bbBurst(b.x,b.y,b.rimColor,30); BB.shake=20; setTimeout(bbCheckResult,700); }
         break;
       }
     }
   }
 
-  // Particles
-  for (let i = BB.state.particles.length-1; i >= 0; i--) {
-    const p = BB.state.particles[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.vx *= 0.94; p.life -= p.decay;
-    if (p.life <= 0) { BB.state.particles.splice(i,1); continue; }
-  }
-
-  // Check deaths
-  for (const b of BB.state.balls) {
-    if (b.alive && b.hp <= 0) {
-      b.alive = false; b.hp = 0;
-      bbBurst(b.x, b.y, b.color, 30);
-      BB.state.shake = 20;
-      setTimeout(() => bbCheckWaveEnd(), 600);
-    }
+  // ── Particles ──────────────────────────────────────────────────
+  for (let i = BB.particles.length-1; i >= 0; i--) {
+    const p = BB.particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.14; p.vx*=0.93; p.life-=p.decay;
+    if (p.life<=0) BB.particles.splice(i,1);
   }
 }
 
-function bbChainLightning(attacker, defender) {
-  // Visual chain between balls
-  for (let i = 0; i < 6; i++) {
-    BB.state.particles.push({
-      x: attacker.x + (defender.x - attacker.x) * (i/5) + rnd(-8,8),
-      y: attacker.y + (defender.y - attacker.y) * (i/5) + rnd(-8,8),
-      vx: rnd(-1,1), vy: rnd(-1,1), r: rnd(2,5),
-      color: '#fbbf24', life: 0.8, decay: 0.08
-    });
-  }
+function bbCheckResult() {
+  const p1alive = BB.balls.find(b=>b.side==='left' && b.alive);
+  const p2alive = BB.balls.find(b=>b.side==='right' && b.alive);
+  if (!p1alive && !p2alive) BB.result = 'draw';
+  else if (!p2alive) BB.result = 'p1';
+  else if (!p1alive) BB.result = 'p2';
+  else return; // still fighting
+  BB.phase = 'result';
+  arcadeScore = (arcadeScore||0) + (BB.result==='p1' ? 100 : 0);
+  updateArcadeScore();
+  bbBuildResultUI();
 }
 
-function bbCheckWaveEnd() {
-  const playerAlive = BB.state.balls.find(b => b.side === 'left'  && b.alive);
-  const enemyAlive  = BB.state.balls.find(b => b.side === 'right' && b.alive);
-
-  if (!playerAlive) {
-    BB.state.roundWins[1]++;
-    if (BB.state.roundWins[1] >= 3) { BB.state.phase = 'result'; BB.state.resultWin = false; }
-    else bbShowUpgrade(false);
-  } else if (!enemyAlive) {
-    BB.state.roundWins[0]++;
-    arcadeScore = BB.state.wave * 100;
-    updateArcadeScore();
-    if (BB.state.roundWins[0] >= 3) { BB.state.phase = 'result'; BB.state.resultWin = true; }
-    else bbShowUpgrade(true);
-  }
-}
-
-function bbShowUpgrade(won) {
-  BB.state.phase = 'upgrade';
-  const pool = [...BB.UPGRADES].sort(() => Math.random()-0.5).slice(0, 3);
-  BB.state.upgradeOptions = pool;
-  BB.state.wave++;
-
+function bbBuildResultUI() {
   const ctrl = id('arcadeControls');
+  const win = BB.result === 'p1';
+  const draw = BB.result === 'draw';
+  const p2w = BB_WEAPONS[BB.p2Weapon];
   ctrl.innerHTML = `
-    <div style="font-family:var(--font-hd);font-size:10px;letter-spacing:2px;color:var(--accent);text-align:center;margin-bottom:10px">WAVE CLEAR! CHOOSE UPGRADE</div>
-    ${pool.map((u,i) => `
-      <button id="bbUpg${i}" style="width:100%;margin-bottom:8px;background:var(--bg2);border:1.5px solid var(--border);color:var(--text);font-family:var(--font);font-size:14px;padding:14px 16px;border-radius:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px">
-        <span style="font-size:22px">${u.emoji}</span>
-        <span><strong style="font-family:var(--font-hd);font-size:11px;letter-spacing:1px;color:var(--accent)">${u.name}</strong><br><span style="color:var(--sub);font-size:12px">${u.desc}</span></span>
-      </button>`).join('')}`;
-
-  pool.forEach((u, i) => {
-    id('bbUpg' + i).addEventListener('click', () => {
-      // Apply to all player balls
-      const playerBalls = BB.state.balls.filter(b => b.side === 'left');
-      if (u.apply) { playerBalls.forEach(b => u.apply(b)); }
-      else if (u.id === 'clone') {
-        const src = playerBalls[0];
-        if (src) {
-          const clone = {...src, x: src.x - 20, y: src.y - 30, hp: src.maxHp * 0.6, maxHp: src.maxHp * 0.6, vx: rnd(-2,2), vy: -4, trail:[], hitTimer:0 };
-          BB.state.balls.push(clone);
-        }
-      }
-      ctrl.innerHTML = '';
-      BB.state.phase = 'fight';
-      bbStartWave();
-    });
-    id('bbUpg' + i).addEventListener('mouseover', function(){ this.style.borderColor='var(--accent)'; });
-    id('bbUpg' + i).addEventListener('mouseout',  function(){ this.style.borderColor='var(--border)'; });
-  });
+    <div style="text-align:center;font-family:var(--font-hd);font-size:11px;letter-spacing:2px;color:${win?'var(--accent)':draw?'var(--sub)':'#f87171'};margin-bottom:12px">
+      ${draw?'DRAW!':win?'🏆 VICTORY!':'💀 DEFEATED!'}
+      <div style="font-size:9px;color:var(--sub);margin-top:4px;letter-spacing:1px">vs ${p2w.name}</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="start-btn" id="bbRetryBtn" style="flex:1">↺ REMATCH</button>
+      <button class="ctrl-btn" id="bbChangeBtn" style="flex:1;border-color:var(--accent);color:var(--accent)">CHANGE WEAPON</button>
+    </div>`;
+  id('bbRetryBtn').addEventListener('click', bbStartFight);
+  id('bbChangeBtn').addEventListener('click', () => { BB.phase='menu'; bbBuildUI(); });
 }
 
-// ── DRAW ─────────────────────────────────────────────────────────
+function bbChain(atk, def) {
+  for (let i=0; i<8; i++) {
+    const t = i/7;
+    BB.particles.push({ x:atk.x+(def.x-atk.x)*t+rnd(-10,10), y:atk.y+(def.y-atk.y)*t+rnd(-10,10), vx:rnd(-1,1), vy:rnd(-1,1), r:rnd(2,5), color:'#fbbf24', life:0.9, decay:0.09 });
+  }
+}
+
+// ── DRAW ─────────────────────────────────────────────────────────────
 function bbDraw() {
   const W = canvas.width, H = canvas.height;
-  const A = bbGetArena();
-  const MAP = BB.MAPS[BB.state.currentMap];
+  const A = bbArena();
+  const MAP = BB_ARENAS[BB.arena];
 
   ctx.save();
-  // Screen shake
-  if (BB.state.shake > 0) {
-    ctx.translate(rnd(-BB.state.shake*0.4, BB.state.shake*0.4), rnd(-BB.state.shake*0.3, BB.state.shake*0.3));
-  }
+  if (BB.shake > 0) ctx.translate(rnd(-BB.shake*0.35,BB.shake*0.35), rnd(-BB.shake*0.25,BB.shake*0.25));
 
-  // ── Background ──
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  // ── Full BG ──
+  ctx.fillStyle = MAP.bg; ctx.fillRect(0, 0, W, H);
 
-  // ── Arena floor ──
-  ctx.fillStyle = MAP.floor;
-  roundRect(ctx, A.x, A.y, A.w, A.h, 10); ctx.fill();
-
-  // Grid lines
-  ctx.strokeStyle = MAP.grid; ctx.lineWidth = 1;
-  for (let gx = A.x + 28; gx < A.x+A.w; gx += 28) {
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath(); ctx.moveTo(gx, A.y); ctx.lineTo(gx, A.y+A.h); ctx.stroke();
-  }
-  for (let gy = A.y + 28; gy < A.y+A.h; gy += 28) {
-    ctx.beginPath(); ctx.moveTo(A.x, gy); ctx.lineTo(A.x+A.w, gy); ctx.stroke();
-  }
+  // Stars/bg particles
+  BB.bgStars.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.fillStyle = MAP.accent;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  });
   ctx.globalAlpha = 1;
 
-  // Center line
-  ctx.strokeStyle = MAP.border; ctx.lineWidth = 1; ctx.globalAlpha = 0.2;
-  ctx.setLineDash([6,6]);
-  ctx.beginPath(); ctx.moveTo(A.x+A.w/2, A.y); ctx.lineTo(A.x+A.w/2, A.y+A.h); ctx.stroke();
-  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  // ── Arena ──
+  ctx.fillStyle = MAP.floor;
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
 
-  // ── Arena border glow ──
-  ctx.strokeStyle = MAP.border; ctx.lineWidth = 3;
-  roundRect(ctx, A.x, A.y, A.w, A.h, 10); ctx.stroke();
-  ctx.strokeStyle = MAP.glow; ctx.lineWidth = 14;
-  roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 12); ctx.stroke();
+  // Grid
+  ctx.strokeStyle = MAP.wall; ctx.lineWidth = 1;
+  for (let gx=A.x+28; gx<A.x+A.w; gx+=28) { ctx.globalAlpha=0.6; ctx.beginPath(); ctx.moveTo(gx,A.y); ctx.lineTo(gx,A.y+A.h); ctx.stroke(); }
+  for (let gy=A.y+28; gy<A.y+A.h; gy+=28) { ctx.beginPath(); ctx.moveTo(A.x,gy); ctx.lineTo(A.x+A.w,gy); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+
+  // Center divider
+  ctx.setLineDash([6,8]); ctx.strokeStyle=MAP.border; ctx.lineWidth=1; ctx.globalAlpha=0.2;
+  ctx.beginPath(); ctx.moveTo(A.x+A.w/2,A.y); ctx.lineTo(A.x+A.w/2,A.y+A.h); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+
+  // Arena glow border
+  ctx.strokeStyle = MAP.border; ctx.lineWidth = 2.5;
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.stroke();
+  ctx.strokeStyle = MAP.accent+'40'; ctx.lineWidth = 12;
+  roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 10); ctx.stroke();
 
   // ── Particles ──
-  for (const p of BB.state.particles) {
-    ctx.globalAlpha = p.life * 0.85;
+  for (const p of BB.particles) {
+    ctx.globalAlpha = p.life * 0.9;
     ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, p.r * p.life), 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, p.r*p.life), 0, Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 
-  // ── Projectiles (arrows) ──
-  for (const p of BB.state.projectiles) {
+  // ── Projectiles ──
+  for (const p of BB.projectiles) {
     ctx.save(); ctx.globalAlpha = p.life;
-    ctx.translate(p.x, p.y);
-    ctx.rotate(Math.atan2(p.vy, p.vx));
-    ctx.fillStyle = '#c09050'; ctx.strokeStyle = p.color; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(8, 0); ctx.lineTo(-8, 2); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // Fletching
-    ctx.fillStyle = '#e04040';
-    ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(-12,-4); ctx.lineTo(-8,0); ctx.lineTo(-12,4); ctx.closePath(); ctx.fill();
+    ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
+    ctx.fillStyle='#c09050'; ctx.strokeStyle=p.color; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(-9,-2.5); ctx.lineTo(9,0); ctx.lineTo(-9,2.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#e04040';
+    ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(-14,-4); ctx.lineTo(-14,4); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 
   // ── Balls ──
-  for (const b of BB.state.balls) {
-    if (!b.alive && b.hp <= 0) continue;
-
+  for (const b of BB.balls) {
+    const isDead = !b.alive;
     ctx.save();
 
-    // Trail
-    if (b.trail.length > 1) {
-      for (let i = 1; i < b.trail.length; i++) {
-        ctx.globalAlpha = (i / b.trail.length) * 0.18;
-        ctx.fillStyle = b.color;
-        ctx.beginPath(); ctx.arc(b.trail[i].x, b.trail[i].y, b.r * (i/b.trail.length) * 0.6, 0, Math.PI*2); ctx.fill();
-      }
+    // Ball trail
+    for (let i=1; i<b.trail.length; i++) {
+      ctx.globalAlpha = (i/b.trail.length)*0.14;
+      ctx.fillStyle = b.color;
+      ctx.beginPath(); ctx.arc(b.trail[i].x, b.trail[i].y, b.r*(i/b.trail.length)*0.5, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
 
     // Floor shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath(); ctx.ellipse(b.x, A.y + A.h, b.r * 0.75, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.ellipse(b.x, A.y+A.h+2, b.r*0.7, 5, 0, 0, Math.PI*2); ctx.fill();
 
     // Hit flash
-    if (b.hitTimer > 0 && Math.floor(b.hitTimer/3)%2 === 0) ctx.globalAlpha = 0.35;
+    if (b.hitTimer>0 && Math.floor(b.hitTimer/3)%2===0) ctx.globalAlpha=0.3;
 
-    // ── Weapon (orbiting PNG) ──
-    ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.rotate(b.angle);
-
-    const orbitDist = b.r * 1.05 + b.reach * 0.08;
-    const wSize = Math.max(28, b.reach * 0.95);
-
-    // Glow trail behind weapon tip
-    ctx.fillStyle = b.color;
-    ctx.globalAlpha = 0.22;
-    ctx.beginPath();
-    ctx.arc(orbitDist + wSize * 0.5, 0, wSize * 0.28, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = b.hitTimer > 0 && Math.floor(b.hitTimer/3)%2===0 ? 0.35 : 1;
-
-    // Draw weapon PNG
-    const wImg = IMGS['weapon_' + b.weaponKey];
-    if (wImg && wImg.complete && wImg.naturalWidth > 0) {
+    // ── WEAPON (orbiting PNG) ──
+    if (!isDead) {
       ctx.save();
-      ctx.translate(orbitDist + wSize * 0.5, 0);
-      // Handle toward ball, tip pointing outward
-      ctx.rotate(Math.PI * 0.5);
-      ctx.drawImage(wImg, -wSize/2, -wSize/2, wSize, wSize);
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.angle);
+
+      const wep   = BB_WEAPONS[b.weaponKey];
+      const orbit = b.r * 1.08;
+      const wSize = Math.max(30, b.reach * 0.98);
+
+      // Glow behind weapon
+      ctx.globalAlpha = 0.3;
+      const glowGrd = ctx.createRadialGradient(orbit + wSize*0.5, 0, 0, orbit+wSize*0.5, 0, wSize*0.6);
+      glowGrd.addColorStop(0, b.rimColor); glowGrd.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGrd;
+      ctx.beginPath(); ctx.arc(orbit+wSize*0.5, 0, wSize*0.55, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = b.hitTimer>0 && Math.floor(b.hitTimer/3)%2===0 ? 0.3 : 1;
+
+      // PNG weapon
+      const wImg = IMGS['weapon_' + b.weaponKey];
+      if (wImg && wImg.complete && wImg.naturalWidth > 0) {
+        ctx.save();
+        ctx.translate(orbit + wSize*0.5, 0);
+        ctx.rotate(Math.PI * 0.5); // handle toward ball
+        ctx.drawImage(wImg, -wSize/2, -wSize/2, wSize, wSize);
+        ctx.restore();
+      } else {
+        // Fallback bar
+        ctx.fillStyle = b.rimColor;
+        ctx.fillRect(orbit, -4, wSize, 8);
+        ctx.fillStyle = '#fff8';
+        ctx.beginPath(); ctx.arc(orbit+wSize, 0, 5, 0, Math.PI*2); ctx.fill();
+      }
+
       ctx.restore();
-    } else {
-      // Fallback colored bar
-      ctx.fillStyle = BB.WEAPONS[b.weaponKey].color;
-      ctx.fillRect(orbitDist, -4, wSize, 8);
     }
-    ctx.restore();
+
     ctx.globalAlpha = 1;
 
     // ── Ball body ──
-    // Outer glow when parrying
+    // Parry glow
     if (b.parryTimer > 0) {
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 4;
-      ctx.globalAlpha = b.parryTimer / 20;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 7, 0, Math.PI*2); ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.strokeStyle='#fef08a'; ctx.lineWidth=3+b.parryTimer*0.2; ctx.globalAlpha=b.parryTimer/22;
+      ctx.beginPath(); ctx.arc(b.x,b.y,b.r+8,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
     }
 
-    // Body gradient
-    const grd = ctx.createRadialGradient(
-      b.x - b.r * 0.38, b.y - b.r * 0.38, b.r * 0.06,
-      b.x, b.y, b.r
-    );
-    grd.addColorStop(0, '#ffffffd0');
-    grd.addColorStop(0.28, b.color);
-    grd.addColorStop(1, b.color + '55');
+    // Stun stars
+    if (b.stunTimer > 0) {
+      for (let s=0; s<3; s++) {
+        const sa = (BB.matchTime*0.15)+s*Math.PI*2/3;
+        ctx.fillStyle='#fbbf24'; ctx.globalAlpha=0.8;
+        ctx.font=`${b.r*0.5}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('★', b.x+Math.cos(sa)*(b.r+10), b.y-b.r-8+Math.sin(sa)*4);
+      }
+      ctx.globalAlpha=1;
+    }
+
+    // Body gradient — big shiny ball
+    const grd = ctx.createRadialGradient(b.x-b.r*0.4, b.y-b.r*0.4, b.r*0.05, b.x, b.y, b.r);
+    grd.addColorStop(0, isDead ? '#444' : '#ffffffd8');
+    grd.addColorStop(0.25, isDead ? '#333' : b.color+'ff');
+    grd.addColorStop(0.7, b.color+'cc');
+    grd.addColorStop(1, b.color+'44');
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
 
-    // Shine
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.beginPath(); ctx.ellipse(b.x - b.r*0.28, b.y - b.r*0.28, b.r*0.38, b.r*0.24, -0.5, 0, Math.PI*2); ctx.fill();
+    // Rim
+    ctx.strokeStyle = isDead ? '#222' : b.rimColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.stroke();
+
+    // Shine highlight
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.ellipse(b.x-b.r*0.3, b.y-b.r*0.3, b.r*0.4, b.r*0.25, -0.5, 0, Math.PI*2); ctx.fill();
 
     // Dead X
-    if (!b.alive) {
-      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3;
-      const d = b.r * 0.5;
-      ctx.beginPath(); ctx.moveTo(b.x-d, b.y-d); ctx.lineTo(b.x+d, b.y+d); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(b.x+d, b.y-d); ctx.lineTo(b.x-d, b.y+d); ctx.stroke();
+    if (isDead) {
+      ctx.strokeStyle='#ff4444'; ctx.lineWidth=3;
+      const d=b.r*0.5;
+      ctx.beginPath(); ctx.moveTo(b.x-d,b.y-d); ctx.lineTo(b.x+d,b.y+d); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x+d,b.y-d); ctx.lineTo(b.x-d,b.y+d); ctx.stroke();
     }
 
     ctx.restore();
   }
 
-  // ── HP BARS ──────────────────────────────────────────────────────
-  const barH = 14, barW = A.w * 0.42;
-  const barY = A.y + A.h + 14;
+  // ── HP BARS (big, prominent) ──────────────────────────────────────
+  const barH = 20, barPad = 14;
+  const barY = A.y + A.h + 18;
+  const halfW = (A.w - barPad*3) / 2;
 
-  for (let i = 0; i < BB.state.balls.length; i++) {
-    const b = BB.state.balls[i];
-    if (!b || (b.side !== 'left' && i > 0) && (b.side !== 'right' && i > 1)) continue;
-    if (b.side !== (i === 0 ? 'left' : 'right')) continue;
-
-    const bx = b.side === 'left' ? A.x : A.x + A.w - barW;
+  for (const b of BB.balls) {
+    const isLeft = b.side === 'left';
+    const bx = isLeft ? A.x + barPad : A.x + barPad*2 + halfW;
     const ratio = Math.max(0, b.hp / b.maxHp);
+    const wep = BB_WEAPONS[b.weaponKey];
 
-    // Track
+    // Track bg
     ctx.fillStyle = C.bg3;
-    roundRect(ctx, bx, barY, barW, barH, 6); ctx.fill();
+    roundRect(ctx, bx, barY, halfW, barH, 8); ctx.fill();
 
     // Fill
     if (ratio > 0) {
-      ctx.fillStyle = ratio > 0.55 ? '#4ade80' : ratio > 0.28 ? '#facc15' : '#f87171';
-      roundRect(ctx, bx, barY, barW * ratio, barH, 6); ctx.fill();
+      ctx.fillStyle = ratio>0.6 ? '#4ade80' : ratio>0.3 ? '#facc15' : '#f87171';
+      // Animate fill from correct side
+      if (isLeft) { roundRect(ctx, bx, barY, halfW*ratio, barH, 8); }
+      else        { roundRect(ctx, bx+halfW*(1-ratio), barY, halfW*ratio, barH, 8); }
+      ctx.fill();
     }
-    ctx.strokeStyle = C.border; ctx.lineWidth = 1;
-    roundRect(ctx, bx, barY, barW, barH, 6); ctx.stroke();
 
-    // Name label
-    ctx.fillStyle = b.color;
-    ctx.font = `bold ${W*0.026}px 'Orbitron', monospace`;
-    ctx.textBaseline = 'bottom';
-    ctx.textAlign = b.side === 'left' ? 'left' : 'right';
-    ctx.fillText(
-      (b.isPlayer ? 'YOU · ' : 'ENEMY · ') + BB.WEAPONS[b.weaponKey].name.toUpperCase(),
-      b.side === 'left' ? bx : bx + barW,
-      barY - 3
-    );
+    // Rarity glow
+    ctx.strokeStyle = BB_RARITY_COLOR[wep.rarity] || C.border; ctx.lineWidth = 1.5;
+    roundRect(ctx, bx, barY, halfW, barH, 8); ctx.stroke();
 
-    // HP number
-    ctx.fillStyle = C.sub;
-    ctx.font = `${W*0.022}px 'DM Sans', sans-serif`;
-    ctx.textAlign = b.side === 'left' ? 'right' : 'left';
-    ctx.fillText(`${Math.ceil(b.hp)}/${b.maxHp}`, b.side==='left' ? bx+barW : bx, barY - 3);
-  }
-
-  // ── Round win dots ──
-  const dotY = A.y - 20;
-  for (let p = 0; p < 2; p++) {
-    const baseX = p === 0 ? A.x + 16 : A.x + A.w - 16 - 44;
-    for (let w2 = 0; w2 < 3; w2++) {
-      const filled = w2 < BB.state.roundWins[p];
-      ctx.fillStyle = filled ? (p===0 ? '#ff6b9d' : '#6bdbff') : C.bg3;
-      ctx.strokeStyle = p===0 ? '#ff6b9d' : '#6bdbff'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(baseX + w2 * 18, dotY, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    }
-  }
-
-  // Wave label
-  ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.03}px 'Orbitron', monospace`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`WAVE ${BB.state.wave}`, A.x + A.w/2, A.y - 20);
-
-  ctx.restore();
-
-  // ── SELECT SCREEN ──
-  if (BB.state.phase === 'select') bbDrawSelect();
-
-  // ── UPGRADE SCREEN ──
-  if (BB.state.phase === 'upgrade') bbDrawUpgrade();
-
-  // ── RESULT SCREEN ──
-  if (BB.state.phase === 'result') bbDrawResult();
-}
-
-// ── SELECT SCREEN ──────────────────────────────────────────────────
-function bbDrawSelect() {
-  const W = canvas.width, H = canvas.height;
-  const A = bbGetArena();
-
-  // Dim arena
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
-  roundRect(ctx, A.x, A.y, A.w, A.h, 10); ctx.fill();
-
-  // Title
-  ctx.fillStyle = C.accent;
-  ctx.font = `bold ${W*0.052}px 'Orbitron', monospace`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText('PICK WEAPON', W/2, A.y + 12);
-
-  ctx.fillStyle = C.sub;
-  ctx.font = `${W*0.026}px 'Orbitron', monospace`;
-  ctx.fillText('TAP ONCE TO SELECT · TWICE TO FIGHT', W/2, A.y + 12 + W*0.065);
-
-  // 4×2 grid
-  const cols = 4;
-  const pad2 = 10;
-  const cellW = (A.w - pad2*(cols+1)) / cols;
-  const cellH = cellW * 0.9;
-  const startY = A.y + 12 + W*0.11;
-
-  Object.entries(BB.WEAPONS).forEach(([key, wep], i) => {
-    const col = i % cols, row = Math.floor(i / cols);
-    const cx = A.x + pad2 + col*(cellW+pad2);
-    const cy = startY + row*(cellH+8);
-    const sel = BB.state.playerWeapon === key;
-    const hov = BB.state.selectHover === key;
-
-    // Card background
-    ctx.fillStyle = sel ? wep.color + '28' : hov ? '#ffffff0d' : C.bg2 + 'ee';
-    ctx.strokeStyle = sel ? wep.color : hov ? '#ffffff30' : C.border;
-    ctx.lineWidth = sel ? 2.5 : 1.5;
-    roundRect(ctx, cx, cy, cellW, cellH, 10); ctx.fill(); ctx.stroke();
-
-    // Weapon PNG icon
-    const wImg = IMGS['weapon_' + key];
-    const iconSize = cellH * 0.44;
-    const iconCX = cx + cellW/2;
-    const iconCY = cy + cellH * 0.36;
-    if (wImg && wImg.complete && wImg.naturalWidth > 0) {
-      ctx.drawImage(wImg, iconCX - iconSize/2, iconCY - iconSize/2, iconSize, iconSize);
-    } else {
-      ctx.fillStyle = wep.color + 'aa';
-      ctx.beginPath(); ctx.arc(iconCX, iconCY, iconSize*0.35, 0, Math.PI*2); ctx.fill();
+    // Weapon icon
+    const wImg = IMGS['weapon_' + b.weaponKey];
+    const iSize = barH * 1.6;
+    const iX = isLeft ? bx - iSize*0.5 - 2 : bx + halfW + 2 - iSize*0.5;
+    const iY = barY + barH/2 - iSize/2;
+    if (wImg && wImg.complete && wImg.naturalWidth>0) {
+      ctx.drawImage(wImg, iX, iY, iSize, iSize);
     }
 
     // Name
-    ctx.fillStyle = sel ? wep.color : C.text;
-    ctx.font = `bold ${cellW*0.105}px 'Orbitron', monospace`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(wep.name, cx+cellW/2, cy+cellH*0.76);
+    ctx.fillStyle = b.alive ? wep.color : C.sub;
+    ctx.font = `bold ${W*0.026}px 'Orbitron', monospace`;
+    ctx.textAlign = isLeft ? 'left' : 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(wep.name, isLeft ? bx+4 : bx+halfW-4, barY-3);
 
-    // Desc
-    ctx.fillStyle = sel ? wep.color + 'bb' : C.sub;
-    ctx.font = `${cellW*0.083}px 'DM Sans', sans-serif`;
-    ctx.fillText(wep.desc, cx+cellW/2, cy+cellH*0.9);
-  });
+    // HP number
+    ctx.fillStyle = C.sub; ctx.font = `${W*0.022}px 'DM Sans', sans-serif`;
+    ctx.textAlign = isLeft ? 'right' : 'left';
+    ctx.fillText(`${Math.ceil(Math.max(0,b.hp))}`, isLeft?bx+halfW-4:bx+4, barY-3);
+  }
 
-  // Stats panel for selected weapon
-  const sw = BB.WEAPONS[BB.state.playerWeapon];
-  const panY = startY + 2*(cellH+8) + 8;
-  const panH = A.y + A.h - panY - 8;
-  if (panH > 50) {
-    ctx.fillStyle = C.bg2 + 'ee'; ctx.strokeStyle = sw.color; ctx.lineWidth = 1.5;
-    roundRect(ctx, A.x+pad2, panY, A.w-pad2*2, panH, 10); ctx.fill(); ctx.stroke();
+  // ── TIMER ──────────────────────────────────────────────────────────
+  if (BB.phase === 'fight') {
+    const secs = Math.floor(BB.matchTime / 60);
+    ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.028}px 'Orbitron', monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(secs+'s', A.x+A.w/2, A.y-22);
+  }
 
-    // Weapon icon large
-    const bigImg = IMGS['weapon_' + BB.state.playerWeapon];
-    const bigSize = Math.min(panH * 0.65, 56);
-    if (bigImg && bigImg.complete && bigImg.naturalWidth > 0) {
-      ctx.drawImage(bigImg, A.x+pad2+12, panY + (panH-bigSize)/2, bigSize, bigSize);
+  // ── TOP LABELS ─────────────────────────────────────────────────────
+  ctx.fillStyle = C.sub; ctx.font = `bold ${W*0.022}px 'Orbitron', monospace`;
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('YOU', A.x+barPad+4, 10);
+  ctx.textAlign='right';
+  ctx.fillText('ENEMY', A.x+A.w-barPad, 10);
+
+  // ── SELECT MENU OVERLAY ──
+  if (BB.phase === 'menu') bbDrawMenu();
+
+  // ── RESULT OVERLAY ──
+  if (BB.phase === 'result') bbDrawResult();
+
+  ctx.restore();
+}
+
+// ── SELECT MENU ───────────────────────────────────────────────────────
+function bbDrawMenu() {
+  const W = canvas.width, H = canvas.height;
+  const A = bbArena();
+
+  // Semi-transparent overlay
+  ctx.fillStyle='rgba(6,4,12,0.88)';
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
+
+  // Title
+  ctx.fillStyle=C.accent;
+  ctx.font=`bold ${W*0.055}px 'Orbitron', monospace`;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('CHOOSE BALL', W/2, A.y+10);
+
+  ctx.fillStyle=C.sub;
+  ctx.font=`${W*0.026}px 'Orbitron', monospace`;
+  ctx.fillText('TAP ONCE TO SELECT  ·  TAP AGAIN TO FIGHT', W/2, A.y+10+W*0.068);
+
+  // 4x3 grid
+  const cols=4, padC=8;
+  const cellW=(A.w-padC*(cols+1))/cols;
+  const cellH=cellW*0.85;
+  const startY=A.y+10+W*0.12;
+
+  Object.entries(BB_WEAPONS).forEach(([key, wep], i) => {
+    const col=i%cols, row=Math.floor(i/cols);
+    const cx=A.x+padC+col*(cellW+padC);
+    const cy=startY+row*(cellH+6);
+    const sel=BB.p1Weapon===key;
+    const hov=BB.selectHover===key;
+    const rCol=BB_RARITY_COLOR[wep.rarity];
+
+    // Card
+    ctx.fillStyle = sel ? wep.color+'30' : hov ? '#ffffff0d' : C.bg2+'ee';
+    ctx.strokeStyle = sel ? wep.color : hov ? '#ffffff25' : rCol+'66';
+    ctx.lineWidth = sel ? 2.5 : 1.2;
+    roundRect(ctx, cx, cy, cellW, cellH, 8); ctx.fill(); ctx.stroke();
+
+    // Rarity glow for selected
+    if (sel) {
+      ctx.strokeStyle=rCol; ctx.lineWidth=1; ctx.globalAlpha=0.5;
+      roundRect(ctx, cx+2, cy+2, cellW-4, cellH-4, 6); ctx.stroke(); ctx.globalAlpha=1;
     }
 
-    // Stats
-    const sx = A.x + pad2 + bigSize + 22;
-    ctx.fillStyle = sw.color;
-    ctx.font = `bold ${W*0.038}px 'Orbitron', monospace`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(sw.name, sx, panY + panH*0.12);
+    // Weapon PNG
+    const wImg=IMGS['weapon_'+key];
+    const iSize=cellH*0.48;
+    const icx=cx+cellW/2, icy=cy+cellH*0.36;
+    if (wImg&&wImg.complete&&wImg.naturalWidth>0) {
+      ctx.drawImage(wImg, icx-iSize/2, icy-iSize/2, iSize, iSize);
+    } else {
+      ctx.fillStyle=wep.color+'aa'; ctx.beginPath(); ctx.arc(icx,icy,iSize*0.38,0,Math.PI*2); ctx.fill();
+    }
 
-    ctx.fillStyle = C.sub;
-    ctx.font = `${W*0.026}px 'DM Sans', sans-serif`;
-    ctx.fillText(`HP ${sw.hp}  ·  DMG ${sw.dmg}  ·  SPD ${sw.spd.toFixed(1)}`, sx, panY + panH*0.45);
-    ctx.fillText(`✦ ${sw.desc.toUpperCase()}`, sx, panY + panH*0.7);
+    // Name
+    ctx.fillStyle=sel?wep.color:C.text;
+    ctx.font=`bold ${cellW*0.10}px 'Orbitron', monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(wep.name, cx+cellW/2, cy+cellH*0.75);
+
+    // Rarity dot
+    ctx.fillStyle=rCol;
+    ctx.beginPath(); ctx.arc(cx+cellW/2, cy+cellH*0.91, 3, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Stats panel for selected
+  const sw=BB_WEAPONS[BB.p1Weapon];
+  const panY=startY+3*(cellH+6)+6;
+  const panH=A.y+A.h-panY-8;
+  if (panH>44) {
+    ctx.fillStyle=C.bg2+'ee'; ctx.strokeStyle=sw.color; ctx.lineWidth=1.5;
+    roundRect(ctx, A.x+padC, panY, A.w-padC*2, panH, 8); ctx.fill(); ctx.stroke();
+
+    const bigImg=IMGS['weapon_'+BB.p1Weapon];
+    const bsz=Math.min(panH*0.75, 55);
+    if (bigImg&&bigImg.complete&&bigImg.naturalWidth>0) {
+      ctx.drawImage(bigImg, A.x+padC+10, panY+(panH-bsz)/2, bsz, bsz);
+    }
+
+    const sx=A.x+padC+bsz+18;
+    ctx.fillStyle=sw.color; ctx.font=`bold ${W*0.038}px 'Orbitron', monospace`;
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(sw.name, sx, panY+panH*0.08);
+
+    ctx.fillStyle=BB_RARITY_COLOR[sw.rarity]; ctx.font=`${W*0.025}px 'Orbitron', monospace`;
+    ctx.fillText(sw.rarity.toUpperCase(), sx, panY+panH*0.38);
+
+    ctx.fillStyle=C.sub; ctx.font=`${W*0.026}px 'DM Sans', sans-serif`;
+    ctx.fillText(`HP ${sw.hp}  ·  DMG ${sw.dmg}  ·  SPD ${sw.spd.toFixed(1)}`, sx, panY+panH*0.58);
+    ctx.fillText(`✦ ${sw.desc}`, sx, panY+panH*0.8);
   }
 }
 
-// ── UPGRADE SCREEN ────────────────────────────────────────────────
-function bbDrawUpgrade() {
-  const W = canvas.width, H = canvas.height;
-  const A = bbGetArena();
-  ctx.fillStyle = 'rgba(0,0,0,0.78)';
-  roundRect(ctx, A.x, A.y, A.w, A.h, 10); ctx.fill();
-
-  ctx.fillStyle = C.accent;
-  ctx.font = `bold ${W*0.048}px 'Orbitron', monospace`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText(`WAVE ${BB.state.wave-1} CLEAR!`, W/2, A.y + 14);
-  ctx.fillStyle = C.sub;
-  ctx.font = `${W*0.028}px 'Orbitron', monospace`;
-  ctx.fillText('SELECT UPGRADE BELOW', W/2, A.y + 14 + W*0.065);
-}
-
-// ── RESULT SCREEN ─────────────────────────────────────────────────
+// ── RESULT OVERLAY ────────────────────────────────────────────────────
 function bbDrawResult() {
-  const W = canvas.width, H = canvas.height;
-  const A = bbGetArena();
-  ctx.fillStyle = 'rgba(0,0,0,0.85)';
-  roundRect(ctx, A.x, A.y, A.w, A.h, 10); ctx.fill();
+  const W=canvas.width;
+  const A=bbArena();
+  ctx.fillStyle='rgba(0,0,0,0.75)';
+  roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
 
-  const win = BB.state.resultWin;
-  ctx.fillStyle = win ? C.accent : '#f87171';
-  ctx.font = `bold ${W*0.072}px 'Orbitron', monospace`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(win ? 'VICTORY!' : 'DEFEAT!', W/2, A.y + A.h*0.38);
+  const win=BB.result==='p1', draw=BB.result==='draw';
+  ctx.fillStyle=win?C.accent:draw?C.sub:'#f87171';
+  ctx.font=`bold ${W*0.068}px 'Orbitron', monospace`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(win?'VICTORY':draw?'DRAW':'DEFEAT', W/2, A.y+A.h*0.38);
 
-  ctx.fillStyle = C.sub;
-  ctx.font = `${W*0.032}px 'Orbitron', monospace`;
-  ctx.fillText(`SCORE: ${arcadeScore}  ·  WAVE: ${BB.state.wave}`, W/2, A.y + A.h*0.58);
-
-  // Build buttons if not already present
-  const ctrl = id('arcadeControls');
-  if (!ctrl.querySelector('#bbRetry')) {
-    ctrl.innerHTML = `
-      <button class="start-btn" id="bbRetry" style="max-width:280px;margin:0 auto;display:block">↺ RETRY</button>
-      <button class="ctrl-btn" id="bbMenu" style="width:100%;max-width:280px;margin:8px auto;display:block">← MENU</button>`;
-    id('bbRetry').addEventListener('click', () => { ctrl.innerHTML=''; openBallBattle(); });
-    id('bbMenu').addEventListener('click', () => { stopArcade(); hide(arcadeScreen); show(hub); });
+  if (BB.p2Weapon) {
+    const p2=BB_WEAPONS[BB.p2Weapon];
+    ctx.fillStyle=C.sub; ctx.font=`${W*0.03}px 'Orbitron', monospace`;
+    ctx.fillText(`vs ${p2.name}`, W/2, A.y+A.h*0.58);
   }
 }
 
-// ── SPARK FX ──────────────────────────────────────────────────────
-function bbBurst(x, y, color, n) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI*2;
-    const spd = rnd(1.5, 7);
-    BB.state.particles.push({ x, y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, r: rnd(2,6), color, life:1, decay: rnd(0.03,0.06) });
-  }
-}
-function bbSpark(x, y) {
-  for (let i = 0; i < 5; i++) {
-    const a = Math.random()*Math.PI*2, s = rnd(3,9);
-    BB.state.particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, r:2, color:'#fef08a', life:0.9, decay:0.1 });
-  }
-}
-
-// ── TOUCH / CLICK INPUT on SELECT screen ─────────────────────────
+// ── TOUCH INPUT ───────────────────────────────────────────────────────
 function bbHandleClick(ex, ey) {
-  if (BB.state.phase !== 'select') return;
-  const W = canvas.width;
-  const A = bbGetArena();
-  const cols = 4, pad2 = 10;
-  const cellW = (A.w - pad2*(cols+1))/cols;
-  const cellH = cellW * 0.9;
-  const startY = A.y + 12 + W*0.11;
+  if (BB.phase!=='menu') return;
+  const W=canvas.width, A=bbArena();
+  const cols=4, padC=8;
+  const cellW=(A.w-padC*(cols+1))/cols;
+  const cellH=cellW*0.85;
+  const startY=A.y+10+W*0.12;
+  const rect=canvas.getBoundingClientRect();
+  const s=W/rect.width;
+  const mx=ex*s, my=ey*s;
 
-  const rect = canvas.getBoundingClientRect();
-  const s = W / rect.width;
-  const mx = ex * s, my = ey * s;
-
-  const keys = Object.keys(BB.WEAPONS);
-  for (let i = 0; i < keys.length; i++) {
-    const col = i%cols, row = Math.floor(i/cols);
-    const cx = A.x + pad2 + col*(cellW+pad2);
-    const cy = startY + row*(cellH+8);
-    if (mx>=cx && mx<=cx+cellW && my>=cy && my<=cy+cellH) {
-      if (BB.state.playerWeapon === keys[i]) {
-        // Second tap = start fight
-        BB.state.phase = 'fight';
-        bbStartWave();
-        id('arcadeControls').innerHTML = '';
-      } else {
-        BB.state.playerWeapon = keys[i];
-      }
+  const keys=Object.keys(BB_WEAPONS);
+  for (let i=0; i<keys.length; i++) {
+    const col=i%cols, row=Math.floor(i/cols);
+    const cx=A.x+padC+col*(cellW+padC), cy=startY+row*(cellH+6);
+    if (mx>=cx&&mx<=cx+cellW&&my>=cy&&my<=cy+cellH) {
+      if (BB.p1Weapon===keys[i]) { bbStartFight(); }
+      else { BB.p1Weapon=keys[i]; localStorage.setItem('bb_p1w',keys[i]); }
       return;
     }
   }
 }
-
 function bbHandleMove(ex, ey) {
-  if (BB.state.phase !== 'select') return;
-  const W = canvas.width;
-  const A = bbGetArena();
-  const cols = 4, pad2 = 10;
-  const cellW = (A.w - pad2*(cols+1))/cols;
-  const cellH = cellW * 0.9;
-  const startY = A.y + 12 + W*0.11;
-  const rect = canvas.getBoundingClientRect();
-  const s = W / rect.width;
-  const mx = ex * s, my = ey * s;
-
-  const keys = Object.keys(BB.WEAPONS);
-  BB.state.selectHover = null;
-  for (let i = 0; i < keys.length; i++) {
+  if (BB.phase!=='menu') return;
+  const W=canvas.width, A=bbArena();
+  const cols=4, padC=8;
+  const cellW=(A.w-padC*(cols+1))/cols;
+  const cellH=cellW*0.85;
+  const startY=A.y+10+W*0.12;
+  const rect=canvas.getBoundingClientRect();
+  const s=W/rect.width;
+  const mx=ex*s, my=ey*s;
+  const keys=Object.keys(BB_WEAPONS);
+  BB.selectHover=null;
+  for (let i=0; i<keys.length; i++) {
     const col=i%cols, row=Math.floor(i/cols);
-    const cx=A.x+pad2+col*(cellW+pad2), cy=startY+row*(cellH+8);
-    if (mx>=cx && mx<=cx+cellW && my>=cy && my<=cy+cellH) { BB.state.selectHover=keys[i]; break; }
+    const cx=A.x+padC+col*(cellW+padC), cy=startY+row*(cellH+6);
+    if (mx>=cx&&mx<=cx+cellW&&my>=cy&&my<=cy+cellH) { BB.selectHover=keys[i]; break; }
   }
 }
 
-// ── MAIN LOOP ─────────────────────────────────────────────────────
-function bbLoop() {
-  if (BB.state.phase === 'fight') bbPhysics();
-  bbDraw();
-  BB.state.raf = requestAnimationFrame(bbLoop);
-  arcadeRAF = BB.state.raf;
+// ── PARTICLES ─────────────────────────────────────────────────────────
+function bbBurst(x, y, color, n) {
+  for (let i=0;i<n;i++) {
+    const a=Math.random()*Math.PI*2, s=rnd(1.5,7);
+    BB.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:rnd(2,6),color,life:1,decay:rnd(0.03,0.06)});
+  }
+}
+function bbSparkLine(x1,y1,x2,y2) {
+  for (let i=0;i<6;i++) {
+    const t=Math.random(), x=x1+(x2-x1)*t+rnd(-6,6), y=y1+(y2-y1)*t+rnd(-6,6);
+    BB.particles.push({x,y,vx:rnd(-2,2),vy:rnd(-3,0),r:2.5,color:'#fef08a',life:0.8,decay:0.1});
+  }
 }
 
-// Wire canvas events
-;(function bbWireEvents() {
-  function onC(e){ const r=canvas.getBoundingClientRect(); const src=e.changedTouches?e.changedTouches[0]:e; bbHandleClick(src.clientX-r.left, src.clientY-r.top); }
-  function onM(e){ const r=canvas.getBoundingClientRect(); const src=e.touches?e.touches[0]:e; bbHandleMove(src.clientX-r.left, src.clientY-r.top); }
-  canvas.addEventListener('click', onC);
-  canvas.addEventListener('touchend', onC, {passive:true});
-  canvas.addEventListener('mousemove', onM);
-  canvas.addEventListener('touchmove', onM, {passive:true});
+// ── MAIN LOOP ─────────────────────────────────────────────────────────
+function bbLoop() {
+  if (BB.phase==='fight') bbPhysics();
+  bbDraw();
+  BB.raf=requestAnimationFrame(bbLoop);
+  arcadeRAF=BB.raf;
+}
+
+// ── CANVAS EVENTS ─────────────────────────────────────────────────────
+;(function() {
+  function onC(e){const r=canvas.getBoundingClientRect();const s=e.changedTouches?e.changedTouches[0]:e;bbHandleClick(s.clientX-r.left,s.clientY-r.top);}
+  function onM(e){const r=canvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;bbHandleMove(s.clientX-r.left,s.clientY-r.top);}
+  canvas.addEventListener('click',onC);
+  canvas.addEventListener('touchend',onC,{passive:true});
+  canvas.addEventListener('mousemove',onM);
+  canvas.addEventListener('touchmove',onM,{passive:true});
 })();
 
 const CAPY_WORLDS = {
