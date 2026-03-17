@@ -1633,24 +1633,42 @@ function wbDraw() {
     // Hit flash
     if (b.hitTimer > 0 && Math.floor(b.hitTimer/3) % 2 === 0) ctx.globalAlpha = 0.4;
 
-    // Weapon (drawn behind ball)
+    const w = WB.WEAPONS[b.weaponKey];
+
+    // ── WEAPON orbiting around ball ──
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.rotate(b.weaponAngle);
-    const w = WB.WEAPONS[b.weaponKey];
-    // Weapon trail
-    ctx.strokeStyle = b.color + '55'; ctx.lineWidth = w.weaponW + 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(b.r * 0.8, 0); ctx.lineTo(b.r + w.weaponLen, 0); ctx.stroke();
-    // Weapon body
-    ctx.strokeStyle = w.special === 'block' ? '#a0aec0' : b.color; ctx.lineWidth = w.weaponW;
-    ctx.beginPath(); ctx.moveTo(b.r * 0.8, 0); ctx.lineTo(b.r + w.weaponLen, 0); ctx.stroke();
-    // Tip glow
-    ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.6;
-    ctx.beginPath(); ctx.arc(b.r + w.weaponLen, 0, w.weaponW*0.7, 0, Math.PI*2); ctx.fill();
+
+    // Orbit distance: tip of ball + half weapon size
+    const orbitDist = b.r + w.weaponLen * 0.3;
+    const wSize = w.weaponLen * 1.1; // weapon icon size
+
+    // Weapon trail glow
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = b.color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(b.r * 0.5, 0); ctx.lineTo(orbitDist + wSize * 0.5, 0); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Draw weapon PNG at orbit position, rotated to point outward
+    const img = IMGS['weapon_' + b.weaponKey];
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      ctx.translate(orbitDist + wSize * 0.5, 0);
+      // Rotate weapon so handle points toward ball, tip points out
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -wSize/2, -wSize/2, wSize, wSize);
+      ctx.restore();
+    } else {
+      // Fallback: colored rect
+      ctx.fillStyle = b.color;
+      ctx.fillRect(orbitDist, -w.weaponW/2, w.weaponLen, w.weaponW);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(orbitDist + w.weaponLen, 0, w.weaponW*0.7, 0, Math.PI*2); ctx.fill();
+    }
     ctx.restore();
 
-    // Ball body
+    // ── Ball body ──
     ctx.globalAlpha = 1;
     const grd = ctx.createRadialGradient(b.x - b.r*0.35, b.y - b.r*0.35, b.r*0.05, b.x, b.y, b.r);
     grd.addColorStop(0, '#ffffffcc');
@@ -1659,15 +1677,16 @@ function wbDraw() {
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
 
+    // Ball shine
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.ellipse(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.35, b.r*0.22, -0.5, 0, Math.PI*2); ctx.fill();
+
     // Parry shield rim
     if (b.parryTimer > 0) {
       ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 3; ctx.globalAlpha = b.parryTimer/20;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r+5, 0, Math.PI*2); ctx.stroke();
     }
-
-    // Weapon icon (canvas SVG-style)
     ctx.globalAlpha = 1;
-    drawWeaponIcon(ctx, b.weaponKey, b.x, b.y, b.r * 0.62, b.color);
 
     ctx.restore();
   }
@@ -1759,8 +1778,18 @@ function wbDrawSelect() {
     ctx.lineWidth = sel ? 2.5 : 1.5;
     roundRect(ctx, cx, cy, cellW, cellH, 10); ctx.fill(); ctx.stroke();
 
-    // Weapon icon
-    drawWeaponIcon(ctx, key, cx+cellW/2, cy+cellH*0.38, cellH*0.22, w.color);
+    // Weapon PNG icon in card
+    const wImg = IMGS['weapon_' + key];
+    const iconSize = cellH * 0.42;
+    const iconX = cx + cellW/2;
+    const iconY = cy + cellH * 0.36;
+    if (wImg && wImg.complete && wImg.naturalWidth > 0) {
+      ctx.drawImage(wImg, iconX - iconSize/2, iconY - iconSize/2, iconSize, iconSize);
+    } else {
+      // Fallback colored circle
+      ctx.fillStyle = w.color + 'aa';
+      ctx.beginPath(); ctx.arc(iconX, iconY, iconSize*0.4, 0, Math.PI*2); ctx.fill();
+    }
 
     // Name
     ctx.fillStyle = sel ? w.color : C.text;
@@ -1782,7 +1811,11 @@ function wbDrawSelect() {
     roundRect(ctx, pad, panY, W-pad*2, panH, 10); ctx.fill(); ctx.stroke();
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    drawWeaponIcon(ctx, WB.playerWeapon, W/2, panY + panH*0.28, panH*0.2, sw.color);
+    const panImg = IMGS['weapon_' + WB.playerWeapon];
+    const panIconSize = panH * 0.38;
+    if (panImg && panImg.complete && panImg.naturalWidth > 0) {
+      ctx.drawImage(panImg, W/2 - panIconSize/2, panY + panH*0.08, panIconSize, panIconSize);
+    }
 
     ctx.fillStyle = sw.color;
     ctx.font = `bold ${W*0.042}px 'Orbitron', monospace`;
