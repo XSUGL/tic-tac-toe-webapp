@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="blade" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d8e0f0"/>
+      <stop offset="40%" style="stop-color:#b0b8c8"/>
+      <stop offset="100%" style="stop-color:#8090a0"/>
+    </linearGradient>
+  </defs>
+  <!-- Blade -->
+  <polygon points="50,4 56,52 50,56 44,52" fill="url(#blade)" stroke="#708090" stroke-width="0.8"/>
+  <!-- Fuller -->
+  <line x1="50" y1="8" x2="50" y2="50" stroke="#c0d0e0" stroke-width="2" opacity="0.6"/>
+  <!-- Blade shine -->
+  <polygon points="50,6 53,24 50,30 47,24" fill="white" opacity="0.22"/>
+  <!-- Guard (wide) -->
+  <path d="M28,52 Q32,56 50,56 Q68,56 72,52 L68,48 Q50,52 32,48 Z" fill="#c8a820" stroke="#907800" stroke-width="1"/>
+  <!-- Handle -->
+  <rect x="43" y="56" width="14" height="28" rx="4" fill="#2d1a0e" stroke="#1a0a00" stroke-width="1"/>
+  <!-- Handle wrap -->
+  <path d="M43,60 Q50,58 57,60" fill="none" stroke="#6b3a1f" stroke-width="2.5"/>
+  <path d="M43,66 Q50,64 57,66" fill="none" stroke="#6b3a1f" stroke-width="2.5"/>
+  <path d="M43,72 Q50,70 57,72" fill="none" stroke="#6b3a1f" stroke-width="2.5"/>
+  <path d="M43,78 Q50,76 57,78" fill="none" stroke="#6b3a1f" stroke-width="2.5"/>
+  <!-- Pommel -->
+  <ellipse cx="50" cy="88" rx="8" ry="6" fill="#c8a820" stroke="#907800" stroke-width="1.5"/>
+  <ellipse cx="50" cy="87" rx="4" ry="3" fill="#e8c840" opacity="0.6"/>
+</svg>

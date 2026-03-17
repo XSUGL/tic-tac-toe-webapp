@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="wm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a8a29e"/>
+      <stop offset="50%" style="stop-color:#78716c"/>
+      <stop offset="100%" style="stop-color:#57534e"/>
+    </linearGradient>
+  </defs>
+  <!-- Handle -->
+  <rect x="44" y="38" width="12" height="52" rx="5" fill="url(#wm)" stroke="#44403c" stroke-width="1"/>
+  <!-- Handle grip rings -->
+  <rect x="44" y="50" width="12" height="3" rx="1.5" fill="#44403c" opacity="0.5"/>
+  <rect x="44" y="58" width="12" height="3" rx="1.5" fill="#44403c" opacity="0.5"/>
+  <rect x="44" y="66" width="12" height="3" rx="1.5" fill="#44403c" opacity="0.5"/>
+  <rect x="44" y="74" width="12" height="3" rx="1.5" fill="#44403c" opacity="0.5"/>
+  <!-- Top jaw open end -->
+  <path d="M32,6 Q28,2 24,6 Q20,10 22,16 L34,28 L44,24 L44,14 Z" fill="url(#wm)" stroke="#44403c" stroke-width="1"/>
+  <path d="M68,6 Q72,2 76,6 Q80,10 78,16 L66,28 L56,24 L56,14 Z" fill="url(#wm)" stroke="#44403c" stroke-width="1"/>
+  <!-- Neck connecting jaws to handle -->
+  <rect x="40" y="22" width="20" height="18" rx="4" fill="url(#wm)" stroke="#44403c" stroke-width="1"/>
+  <!-- Gap between jaws -->
+  <path d="M40,8 Q50,4 60,8 L60,22 L40,22 Z" fill="#1c1c1c" opacity="0.8"/>
+  <!-- Highlight -->
+  <line x1="46" y1="40" x2="46" y2="86" stroke="#d4cfc9" stroke-width="1.5" opacity="0.4"/>
+  <path d="M34,10 Q38,8 44,10" fill="none" stroke="#d4cfc9" stroke-width="1.5" opacity="0.35"/>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="blade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e8f0"/>
+      <stop offset="40%" style="stop-color:#c0c8d8"/>
+      <stop offset="100%" style="stop-color:#8090a8"/>
+    </linearGradient>
+    <linearGradient id="hilt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#c8a000"/>
+      <stop offset="50%" style="stop-color:#f0d060"/>
+      <stop offset="100%" style="stop-color:#c8a000"/>
+    </linearGradient>
+  </defs>
+  <!-- Blade -->
+  <polygon points="50,4 54,68 50,72 46,68" fill="url(#blade)" stroke="#607080" stroke-width="0.5"/>
+  <!-- Fuller (groove) -->
+  <line x1="50" y1="8" x2="50" y2="65" stroke="#a0b0c0" stroke-width="1.5" opacity="0.7"/>
+  <!-- Guard -->
+  <rect x="28" y="68" width="44" height="8" rx="3" fill="url(#hilt)" stroke="#a08000" stroke-width="1"/>
+  <!-- Handle -->
+  <rect x="44" y="76" width="12" height="18" rx="3" fill="#6b3a1f" stroke="#4a2800" stroke-width="1"/>
+  <!-- Handle wrap -->
+  <line x1="44" y1="81" x2="56" y2="81" stroke="#4a2800" stroke-width="1.5" opacity="0.6"/>
+  <line x1="44" y1="85" x2="56" y2="85" stroke="#4a2800" stroke-width="1.5" opacity="0.6"/>
+  <line x1="44" y1="89" x2="56" y2="89" stroke="#4a2800" stroke-width="1.5" opacity="0.6"/>
+  <!-- Pommel -->
+  <circle cx="50" cy="96" r="6" fill="url(#hilt)" stroke="#a08000" stroke-width="1"/>
+  <!-- Blade shine -->
+  <line x1="48" y1="8" x2="47" y2="60" stroke="white" stroke-width="1" opacity="0.4"/>
+  <!-- Tip -->
+  <polygon points="50,4 52,20 48,20" fill="white" opacity="0.3"/>
+</svg>

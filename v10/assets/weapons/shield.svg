@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="face" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a6e"/>
+      <stop offset="100%" style="stop-color:#0e2040"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8a000"/>
+      <stop offset="50%" style="stop-color:#f0d060"/>
+      <stop offset="100%" style="stop-color:#c8a000"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield body -->
+  <path d="M50,5 L88,18 L88,55 Q88,80 50,97 Q12,80 12,55 L12,18 Z" fill="url(#face)"/>
+  <!-- Rim -->
+  <path d="M50,5 L88,18 L88,55 Q88,80 50,97 Q12,80 12,55 L12,18 Z" fill="none" stroke="url(#rim)" stroke-width="4"/>
+  <!-- Center boss -->
+  <circle cx="50" cy="50" r="14" fill="#c0a820" stroke="#906800" stroke-width="2"/>
+  <circle cx="50" cy="50" r="8" fill="#e8d040" stroke="#b09000" stroke-width="1.5"/>
+  <!-- Cross emblem -->
+  <rect x="46" y="28" width="8" height="44" rx="2" fill="#e84040" opacity="0.9"/>
+  <rect x="28" y="46" width="44" height="8" rx="2" fill="#e84040" opacity="0.9"/>
+  <!-- Cross overlay on boss -->
+  <circle cx="50" cy="50" r="6" fill="#e8d040"/>
+  <!-- Boss studs -->
+  <circle cx="50" cy="50" r="3" fill="#806000"/>
+  <!-- Shield shine -->
+  <path d="M20,22 Q35,18 50,20 Q50,35 42,45 Q30,42 20,30 Z" fill="white" opacity="0.08"/>
+  <!-- Rivets at rim -->
+  <circle cx="50" cy="9" r="2.5" fill="#e8d040"/>
+  <circle cx="84" cy="22" r="2.5" fill="#e8d040"/>
+  <circle cx="84" cy="52" r="2.5" fill="#e8d040"/>
+  <circle cx="16" cy="22" r="2.5" fill="#e8d040"/>
+  <circle cx="16" cy="52" r="2.5" fill="#e8d040"/>
+</svg>
