@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+  <defs>
+    <radialGradient id="dbody" cx="45%" cy="40%" r="55%">
+      <stop offset="0%" style="stop-color:#c4922a"/>
+      <stop offset="100%" style="stop-color:#7a5010"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(60,40) rotate(180) translate(-60,-40)">
+    <ellipse cx="52" cy="50" rx="38" ry="24" fill="url(#dbody)"/>
+    <ellipse cx="52" cy="56" rx="24" ry="14" fill="#d4a840" opacity="0.7"/>
+    <ellipse cx="24" cy="70" rx="7" ry="9" fill="#8a6018" transform="rotate(-8,24,70)"/>
+    <ellipse cx="38" cy="70" rx="7" ry="9" fill="#9a7020" transform="rotate(5,38,70)"/>
+    <ellipse cx="64" cy="69" rx="6.5" ry="9" fill="#8a6018"/>
+    <ellipse cx="78" cy="68" rx="6.5" ry="8.5" fill="#9a7020"/>
+    <rect x="74" y="22" width="40" height="34" rx="8" fill="#c49030"/>
+    <rect x="76" y="20" width="36" height="16" rx="6" fill="#c49030"/>
+    <rect x="100" y="34" width="24" height="18" rx="5" fill="#9a7018"/>
+    <ellipse cx="110" cy="42" rx="2.5" ry="1.8" fill="#4a2808"/>
+    <ellipse cx="118" cy="42" rx="2.5" ry="1.8" fill="#4a2808"/>
+    <!-- X eyes -->
+    <line x1="82" y1="24" x2="90" y2="32" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="90" y1="24" x2="82" y2="32" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="82" cy="18" rx="7" ry="6" fill="#9a7020"/>
+    <ellipse cx="14" cy="50" rx="5" ry="4" fill="#8a6018"/>
+  </g>
+  <!-- Stars above dead capy -->
+  <text x="45" y="20" font-size="14" text-anchor="middle">✦</text>
+  <text x="60" y="14" font-size="10" text-anchor="middle">✦</text>
+  <text x="75" y="18" font-size="12" text-anchor="middle">✦</text>
+</svg>

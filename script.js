@@ -481,6 +481,37 @@ const C = {
 };
 
 function rnd(a,b){ return a+Math.random()*(b-a); }
+
+// ── IMAGE PRELOADER ───────────────────────────────────
+const IMGS = {};
+const WEAPON_KEYS = ['sword','hammer','scythe','spear','bow','shield','dagger','lightning'];
+
+function preloadImages(cb) {
+  let loaded = 0;
+  const total = WEAPON_KEYS.length + 2; // weapons + capy + capy_dead
+  function onload() { loaded++; if (loaded >= total && cb) cb(); }
+
+  WEAPON_KEYS.forEach(k => {
+    const img = new Image();
+    img.onload = onload; img.onerror = onload;
+    img.src = `assets/weapons/${k}.svg`;
+    IMGS['weapon_' + k] = img;
+  });
+
+  const capyImg = new Image();
+  capyImg.onload = onload; capyImg.onerror = onload;
+  capyImg.src = 'assets/capy/capy.svg';
+  IMGS['capy'] = capyImg;
+
+  const capyDead = new Image();
+  capyDead.onload = onload; capyDead.onerror = onload;
+  capyDead.src = 'assets/capy/capy_dead.svg';
+  IMGS['capy_dead'] = capyDead;
+}
+
+// Preload on page load
+window.addEventListener('DOMContentLoaded', () => preloadImages());
+
 function lerp(a,b,t){ return a+(b-a)*t; }
 
 // ══════════════════════════════════════════════
@@ -749,178 +780,24 @@ function roundRect(ctx,x,y,w,h,r){
 }
 
 // ── WEAPON ICON RENDERER ─────────────────────────────────
-// Draws a proper canvas icon for each weapon (no emoji)
 function drawWeaponIcon(ctx, weaponKey, cx, cy, size, col) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  const s = size; // scale unit
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-  switch (weaponKey) {
-    case 'sword': {
-      // Blade
-      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = s * 0.18;
-      ctx.beginPath(); ctx.moveTo(-s*0.05, s*0.9); ctx.lineTo(s*0.05, -s*0.9); ctx.stroke();
-      // Guard
-      ctx.lineWidth = s * 0.14;
-      ctx.beginPath(); ctx.moveTo(-s*0.55, s*0.1); ctx.lineTo(s*0.55, s*0.1); ctx.stroke();
-      // Pommel
-      ctx.fillStyle = '#a0aec0';
-      ctx.beginPath(); ctx.arc(0, s*0.75, s*0.17, 0, Math.PI*2); ctx.fill();
-      // Tip shine
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.08;
-      ctx.beginPath(); ctx.moveTo(s*0.02, -s*0.7); ctx.lineTo(s*0.04, -s*0.9); ctx.stroke();
-      break;
-    }
-    case 'hammer': {
-      // Handle
-      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s * 0.15;
-      ctx.beginPath(); ctx.moveTo(0, s*0.85); ctx.lineTo(0, -s*0.2); ctx.stroke();
-      // Head
-      ctx.fillStyle = '#9ca3af';
-      ctx.beginPath();
-      roundRect(ctx, -s*0.45, -s*0.85, s*0.9, s*0.55, s*0.1);
-      ctx.fill();
-      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.06;
-      ctx.stroke();
-      // Face highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      roundRect(ctx, -s*0.38, -s*0.78, s*0.76, s*0.18, s*0.06); ctx.fill();
-      break;
-    }
-    case 'scythe': {
-      // Handle
-      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
-      ctx.beginPath(); ctx.moveTo(-s*0.3, s*0.9); ctx.lineTo(s*0.3, -s*0.6); ctx.stroke();
-      // Blade curve (moon shape)
-      ctx.strokeStyle = '#fde047'; ctx.lineWidth = s*0.17;
-      ctx.beginPath();
-      ctx.arc(s*0.15, -s*0.45, s*0.6, Math.PI*1.05, Math.PI*1.75);
-      ctx.stroke();
-      // Inner curve (concave)
-      ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = s*0.1;
-      ctx.beginPath();
-      ctx.arc(s*0.1, -s*0.38, s*0.46, Math.PI*1.08, Math.PI*1.72);
-      ctx.stroke();
-      // Tip
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath(); ctx.arc(s*0.3, -s*0.87, s*0.1, 0, Math.PI*2); ctx.fill();
-      break;
-    }
-    case 'spear': {
-      // Shaft
-      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
-      ctx.beginPath(); ctx.moveTo(0, s*0.9); ctx.lineTo(0, -s*0.3); ctx.stroke();
-      // Tip triangle
-      ctx.fillStyle = '#9ca3af';
-      ctx.beginPath();
-      ctx.moveTo(0, -s*0.95);
-      ctx.lineTo(-s*0.2, -s*0.3);
-      ctx.lineTo(s*0.2, -s*0.3);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.05; ctx.stroke();
-      // Highlight
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.07;
-      ctx.beginPath(); ctx.moveTo(-s*0.05, -s*0.8); ctx.lineTo(s*0.03, -s*0.45); ctx.stroke();
-      break;
-    }
-    case 'bow': {
-      // Bow arc
-      ctx.strokeStyle = '#92400e'; ctx.lineWidth = s*0.13;
-      ctx.beginPath(); ctx.arc(s*0.25, 0, s*0.75, Math.PI*0.6, Math.PI*1.4); ctx.stroke();
-      // String
-      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = s*0.06;
-      ctx.beginPath();
-      ctx.moveTo(s*0.25 + s*0.75*Math.cos(Math.PI*0.6), s*0.75*Math.sin(Math.PI*0.6));
-      ctx.lineTo(-s*0.12, 0);
-      ctx.lineTo(s*0.25 + s*0.75*Math.cos(Math.PI*1.4), s*0.75*Math.sin(Math.PI*1.4));
-      ctx.stroke();
-      // Arrow
-      ctx.strokeStyle = '#fde047'; ctx.lineWidth = s*0.09;
-      ctx.beginPath(); ctx.moveTo(s*0.5, 0); ctx.lineTo(-s*0.55, 0); ctx.stroke();
-      // Arrow tip
-      ctx.fillStyle = '#9ca3af';
-      ctx.beginPath(); ctx.moveTo(-s*0.55,0); ctx.lineTo(-s*0.35,-s*0.12); ctx.lineTo(-s*0.35,s*0.12); ctx.closePath(); ctx.fill();
-      // Fletching
-      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = s*0.08;
-      ctx.beginPath(); ctx.moveTo(s*0.38,-s*0.14); ctx.lineTo(s*0.5,0); ctx.lineTo(s*0.38,s*0.14); ctx.stroke();
-      break;
-    }
-    case 'shield': {
-      // Shield body
-      ctx.fillStyle = '#1e3a5f';
-      ctx.beginPath();
-      ctx.moveTo(0, -s*0.92);
-      ctx.bezierCurveTo(s*0.7, -s*0.92, s*0.85, -s*0.2, s*0.85, s*0.1);
-      ctx.bezierCurveTo(s*0.85, s*0.55, s*0.45, s*0.85, 0, s*0.95);
-      ctx.bezierCurveTo(-s*0.45, s*0.85, -s*0.85, s*0.55, -s*0.85, s*0.1);
-      ctx.bezierCurveTo(-s*0.85, -s*0.2, -s*0.7, -s*0.92, 0, -s*0.92);
-      ctx.closePath(); ctx.fill();
-      // Border
-      ctx.strokeStyle = '#e53e3e'; ctx.lineWidth = s*0.1; ctx.stroke();
-      // Emblem
-      ctx.fillStyle = '#e53e3e';
-      ctx.beginPath(); ctx.moveTo(0,-s*0.35); ctx.lineTo(s*0.28,s*0.1); ctx.lineTo(-s*0.28,s*0.1); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(0,s*0.42); ctx.lineTo(s*0.28,-s*0.03); ctx.lineTo(-s*0.28,-s*0.03); ctx.closePath(); ctx.fill();
-      // Shine
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.beginPath(); ctx.ellipse(-s*0.2, -s*0.3, s*0.2, s*0.45, -0.4, 0, Math.PI*2); ctx.fill();
-      break;
-    }
-    case 'dagger': {
-      // Blade
-      ctx.fillStyle = '#d1d5db';
-      ctx.beginPath();
-      ctx.moveTo(0, -s*0.92);
-      ctx.lineTo(-s*0.12, s*0.1);
-      ctx.lineTo(s*0.12, s*0.1);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#6b7280'; ctx.lineWidth = s*0.05; ctx.stroke();
-      // Fuller (groove)
-      ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = s*0.05;
-      ctx.beginPath(); ctx.moveTo(0, -s*0.78); ctx.lineTo(0, s*0.05); ctx.stroke();
-      // Guard
-      ctx.fillStyle = '#92400e';
-      ctx.beginPath(); roundRect(ctx, -s*0.32, s*0.07, s*0.64, s*0.16, s*0.06); ctx.fill();
-      // Handle
-      ctx.fillStyle = '#78350f';
-      ctx.beginPath(); roundRect(ctx, -s*0.14, s*0.22, s*0.28, s*0.62, s*0.08); ctx.fill();
-      // Pommel
-      ctx.fillStyle = '#92400e';
-      ctx.beginPath(); ctx.arc(0, s*0.9, s*0.15, 0, Math.PI*2); ctx.fill();
-      // Blade shine
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = s*0.06; ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.moveTo(-s*0.05,-s*0.78); ctx.lineTo(-s*0.04,-s*0.15); ctx.stroke();
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'lightning': {
-      // Bolt shape
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath();
-      ctx.moveTo(s*0.18, -s*0.92);
-      ctx.lineTo(-s*0.28, s*0.0);
-      ctx.lineTo(s*0.05, s*0.0);
-      ctx.lineTo(-s*0.18, s*0.92);
-      ctx.lineTo(s*0.42, -s*0.08);
-      ctx.lineTo(s*0.08, -s*0.08);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = s*0.06; ctx.stroke();
-      // Inner glow
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.beginPath();
-      ctx.moveTo(s*0.12, -s*0.7);
-      ctx.lineTo(-s*0.1, s*0.0);
-      ctx.lineTo(s*0.04, s*0.0);
-      ctx.lineTo(-s*0.06, s*0.62);
-      ctx.lineTo(s*0.28, -s*0.08);
-      ctx.lineTo(s*0.06, -s*0.08);
-      ctx.closePath(); ctx.fill();
-      break;
-    }
+  const img = IMGS['weapon_' + weaponKey];
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.save();
+    ctx.drawImage(img, cx - size, cy - size, size * 2, size * 2);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.fillStyle = col + 'cc';
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${size}px monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(weaponKey[0].toUpperCase(), cx, cy);
+    ctx.restore();
   }
-  ctx.restore();
 }
+
 
 
 // ══════════════════════════════════════════════
@@ -1161,7 +1038,27 @@ function buildControls(game){
       b.addEventListener('mouseup',()=>clearInterval(iv));
     });
   } else if(game==='capybara'){
-    ctrl.innerHTML=`<button class="arc-btn wide" id="capy_jump">🐾 JUMP</button>`;
+    const worldKeys = Object.keys(CAPY_WORLDS);
+    ctrl.innerHTML=`
+      <div style="margin-bottom:8px">
+        <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">SELECT WORLD</div>
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">
+          ${worldKeys.map(k=>`<button class="world-pill ${k===capyWorld?'map-active':''}" data-world="${k}" style="flex-shrink:0;background:${k===capyWorld?'var(--accent)':'var(--bg3)'};border:1px solid ${k===capyWorld?'var(--accent)':'var(--border)'};color:${k===capyWorld?'#fff':'var(--sub)'};font-family:var(--font-hd);font-size:10px;letter-spacing:1px;padding:7px 10px;border-radius:20px;cursor:pointer;white-space:nowrap">${CAPY_WORLDS[k].emoji} ${CAPY_WORLDS[k].name}</button>`).join('')}
+        </div>
+      </div>
+      <button class="arc-btn wide" id="capy_jump">🐾 JUMP</button>`;
+    document.querySelectorAll('.world-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        capyWorld = btn.dataset.world;
+        localStorage.setItem('capyWorld', capyWorld);
+        document.querySelectorAll('.world-pill').forEach(b => {
+          const active = b.dataset.world === capyWorld;
+          b.style.background = active ? 'var(--accent)' : 'var(--bg3)';
+          b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+          b.style.color = active ? '#fff' : 'var(--sub)';
+        });
+      });
+    });
     document.getElementById('capy_jump').addEventListener('click',()=>document.dispatchEvent(new KeyboardEvent('keydown',{code:'Space'})));
   } else if(game==='flappy'){
     ctrl.innerHTML=`<button class="arc-btn wide" id="flapBtn">🐦 TAP / FLAP</button>`;
@@ -1234,6 +1131,35 @@ const WB = {
 
   // Arena
   arena: { x:0, y:0, w:0, h:0 },
+  currentMap: 'dungeon',
+
+  MAPS: {
+    dungeon: {
+      name:'DUNGEON', emoji:'🏰', desc:'Dark stone arena',
+      bg:'#0d0d15', grid:'#1a1520', border:'#7c6fff', glow:'#7c6fff33',
+      floor:'#16121e', accent:'#a78bfa',
+    },
+    volcano: {
+      name:'VOLCANO', emoji:'🌋', desc:'Lava-filled pit',
+      bg:'#1a0800', grid:'#2a1200', border:'#f97316', glow:'#f9731633',
+      floor:'#2d1008', accent:'#fb923c',
+    },
+    ice: {
+      name:'ICE CAVE', emoji:'❄️', desc:'Slippery ice floor',
+      bg:'#080d1a', grid:'#0d1525', border:'#60a5fa', glow:'#60a5fa33',
+      floor:'#0e1830', accent:'#93c5fd',
+    },
+    jungle: {
+      name:'JUNGLE', emoji:'🌿', desc:'Overgrown ruins',
+      bg:'#081208', grid:'#0d1e0d', border:'#4ade80', glow:'#4ade8033',
+      floor:'#0a1a0a', accent:'#86efac',
+    },
+    space: {
+      name:'SPACE', emoji:'🚀', desc:'Zero-gravity zone',
+      bg:'#030308', grid:'#0a0a18', border:'#e879f9', glow:'#e879f933',
+      floor:'#080810', accent:'#f0abfc',
+    },
+  },
 
   // Game state
   balls: [],
@@ -1621,19 +1547,52 @@ function wbDraw() {
   // BG
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
 
-  // Arena background
-  ctx.fillStyle = '#0d1117';
+  // Arena background (themed)
+  const MAP = WB.MAPS[WB.currentMap];
+  ctx.fillStyle = MAP.bg;
   roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.fill();
 
+  // Clipped arena content
+  ctx.save();
+  ctx.beginPath(); roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.clip();
+
   // Grid
-  ctx.strokeStyle = '#1a1f2e'; ctx.lineWidth = 1;
+  ctx.strokeStyle = MAP.grid; ctx.lineWidth = 1;
   for (let gx = A.x; gx <= A.x+A.w; gx += 32) { ctx.beginPath(); ctx.moveTo(gx, A.y); ctx.lineTo(gx, A.y+A.h); ctx.stroke(); }
   for (let gy = A.y; gy <= A.y+A.h; gy += 32) { ctx.beginPath(); ctx.moveTo(A.x, gy); ctx.lineTo(A.x+A.w, gy); ctx.stroke(); }
 
+  // Map-specific floor decorations
+  if (WB.currentMap === 'volcano') {
+    // Lava cracks
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.globalAlpha = 0.15;
+    [[A.x+30,A.y+A.h-20,A.x+80,A.y+A.h-5],[A.x+A.w-80,A.y+A.h-15,A.x+A.w-20,A.y+A.h-8]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    ctx.globalAlpha = 1;
+  }
+  if (WB.currentMap === 'ice') {
+    // Ice crystals
+    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1; ctx.globalAlpha = 0.2;
+    for (let i = 0; i < 6; i++) { const ix=A.x+30+i*((A.w-60)/5),iy=A.y+A.h-8; ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(ix,iy-15);ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  if (WB.currentMap === 'jungle') {
+    // Vines
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.globalAlpha = 0.12;
+    for (let i = 0; i < 4; i++) { const vx=A.x+40+i*((A.w-80)/3); ctx.beginPath();ctx.moveTo(vx,A.y);ctx.bezierCurveTo(vx+10,A.y+30,vx-10,A.y+60,vx+5,A.y+80);ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  if (WB.currentMap === 'space') {
+    // Stars
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.4;
+    [[A.x+20,A.y+20],[A.x+A.w-30,A.y+15],[A.x+A.w/2,A.y+25],[A.x+40,A.y+A.h-30],[A.x+A.w-50,A.y+A.h-25]].forEach(([sx,sy])=>{ctx.beginPath();ctx.arc(sx,sy,1,0,Math.PI*2);ctx.fill();});
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+
   // Arena border
-  ctx.strokeStyle = '#7c6fff'; ctx.lineWidth = 2.5;
+  ctx.strokeStyle = MAP.border; ctx.lineWidth = 2.5;
   roundRect(ctx, A.x, A.y, A.w, A.h, 8); ctx.stroke();
-  ctx.strokeStyle = '#7c6fff33'; ctx.lineWidth = 10;
+  ctx.strokeStyle = MAP.glow; ctx.lineWidth = 10;
   roundRect(ctx, A.x-2, A.y-2, A.w+4, A.h+4, 10); ctx.stroke();
 
   // Particles
@@ -1932,7 +1891,27 @@ function wbRunSelectLoop() {
   canvas.addEventListener('touchend', onTap);
 
   // Fight button
-  id('arcadeControls').innerHTML = `<button class="start-btn" id="wbFightBtn" style="max-width:280px;margin:0 auto;display:block">⚔️ FIGHT!</button>`;
+  // Map select + fight button
+  const mapKeys = Object.keys(WB.MAPS);
+  id('arcadeControls').innerHTML = `
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--font-hd);font-size:9px;letter-spacing:2px;color:var(--sub);text-align:center;margin-bottom:6px">SELECT ARENA</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">
+        ${mapKeys.map(k => `<button class="map-pill ${k===WB.currentMap?'map-active':''}" data-map="${k}" style="flex-shrink:0;background:${k===WB.currentMap?'var(--accent)':'var(--bg3)'};border:1px solid ${k===WB.currentMap?'var(--accent)':'var(--border)'};color:${k===WB.currentMap?'#fff':'var(--sub)'};font-family:var(--font-hd);font-size:10px;letter-spacing:1px;padding:7px 12px;border-radius:20px;cursor:pointer;white-space:nowrap">${WB.MAPS[k].emoji} ${WB.MAPS[k].name}</button>`).join('')}
+      </div>
+    </div>
+    <button class="start-btn" id="wbFightBtn" style="max-width:300px;margin:0 auto;display:block">⚔️ FIGHT!</button>`;
+  document.querySelectorAll('.map-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      WB.currentMap = btn.dataset.map;
+      document.querySelectorAll('.map-pill').forEach(b => {
+        const active = b.dataset.map === WB.currentMap;
+        b.style.background = active ? 'var(--accent)' : 'var(--bg3)';
+        b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+        b.style.color = active ? '#fff' : 'var(--sub)';
+      });
+    });
+  });
   id('wbFightBtn').addEventListener('click', () => { cleanup(); wbStartFight(); });
 
   function loop() {
@@ -2122,7 +2101,19 @@ function wbShowResultBtns() {
 // ══════════════════════════════════════════════════════════
 //  🐾  CAPYBARA RUN  –  Platformer with capybara character
 // ══════════════════════════════════════════════════════════
-function startCapybara() {
+// World themes for Capybara Run
+const CAPY_WORLDS = {
+  grassland: { name:'GRASSLAND', emoji:'🌿', bg:'#0a0a0f', ground:'#1c1c28', groundLine:'#2a2a3d', platColor:'#2a2a3d', platBorder:'#3d3d5c', obstacleCol:'#2d6a4f', coinCol:'#fde047', skyColor:'#0d1020', starColor:'#ffffff20' },
+  jungle:    { name:'JUNGLE',    emoji:'🌴', bg:'#051208', ground:'#0a1e0a', groundLine:'#1a3a1a', platColor:'#0e280e', platBorder:'#1a4a1a', obstacleCol:'#1a5c1a', coinCol:'#ffd700', skyColor:'#060f06', starColor:'#90ee9020' },
+  snow:      { name:'SNOW',      emoji:'❄️', bg:'#060810', ground:'#1a2030', groundLine:'#2a3050', platColor:'#1e2840', platBorder:'#3a4868', obstacleCol:'#2a4060', coinCol:'#60dfff', skyColor:'#08090f', starColor:'#b0c8ff30' },
+  city:      { name:'CITY',      emoji:'🏙', bg:'#08080c', ground:'#181820', groundLine:'#282830', platColor:'#202030', platBorder:'#383848', obstacleCol:'#303040', coinCol:'#ffd700', skyColor:'#080810', starColor:'#ffffff15' },
+  night:     { name:'NIGHT',     emoji:'🌙', bg:'#04040a', ground:'#100c18', groundLine:'#1e1630', platColor:'#160e24', platBorder:'#2a1a3e', obstacleCol:'#553c9a', coinCol:'#e879f9', skyColor:'#04040c', starColor:'#c080ff25' },
+};
+let capyWorld = localStorage.getItem('capyWorld') || 'grassland';
+
+function startCapybara(worldKey) {
+  if (worldKey) capyWorld = worldKey;
+  const WORLD = CAPY_WORLDS[capyWorld];
   const W = canvas.width, H = canvas.height;
   const GRAVITY = 0.55, JUMP_FORCE = -13, MOVE_SPD = 4.5;
   const GROUND = H - 45;
@@ -2185,69 +2176,18 @@ function startCapybara() {
 
   // Draw capybara function
   function drawCapybara(x, y, w, h, walkF, dead) {
-    ctx.save();
-    if (dead) { ctx.translate(x + w/2, y + h/2); ctx.rotate(Math.PI); ctx.translate(-(x + w/2), -(y + h/2)); }
-
-    const bx = x, by = y;
-    const scl = w / 52;
-
-    // Body (rounded rectangle)
-    ctx.fillStyle = '#8B6914';
-    ctx.beginPath();
-    ctx.ellipse(bx + w*0.5, by + h*0.55, w*0.5, h*0.42, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Belly lighter
-    ctx.fillStyle = '#B8882A';
-    ctx.beginPath();
-    ctx.ellipse(bx + w*0.5, by + h*0.6, w*0.32, h*0.28, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Legs (animated walk)
-    const legOffset = Math.sin(walkF * 0.28) * 5;
-    ctx.fillStyle = '#7A5C10';
-    // Back legs
-    ctx.beginPath(); ctx.ellipse(bx+w*0.25, by+h*0.88, w*0.1, h*0.18, legOffset*0.04, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(bx+w*0.35, by+h*0.88, w*0.1, h*0.18, -legOffset*0.04, 0, Math.PI*2); ctx.fill();
-    // Front legs
-    ctx.beginPath(); ctx.ellipse(bx+w*0.62, by+h*0.88, w*0.1, h*0.18, -legOffset*0.04, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.88, w*0.1, h*0.18, legOffset*0.04, 0, Math.PI*2); ctx.fill();
-
-    // Head
-    ctx.fillStyle = '#8B6914';
-    ctx.beginPath();
-    ctx.ellipse(bx + w*0.78, by + h*0.3, w*0.26, h*0.28, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // Snout (blunt / rectangular)
-    ctx.fillStyle = '#7A5C10';
-    ctx.beginPath();
-    roundRect(ctx, bx+w*0.82, by+h*0.22, w*0.22, h*0.22, 4*scl);
-    ctx.fill();
-
-    // Nostrils
-    ctx.fillStyle = '#5a4008';
-    ctx.beginPath(); ctx.arc(bx+w*0.88, by+h*0.32, 2*scl, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bx+w*0.97, by+h*0.32, 2*scl, 0, Math.PI*2); ctx.fill();
-
-    // Eye
-    ctx.fillStyle = dead ? '#ff4444' : '#1a0a00';
-    ctx.beginPath(); ctx.arc(bx+w*0.83, by+h*0.2, 4*scl, 0, Math.PI*2); ctx.fill();
-    if (!dead) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx+w*0.85, by+h*0.18, 1.5*scl, 0, Math.PI*2); ctx.fill(); }
-    if (dead) {
-      // X eyes
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(bx+w*0.8,by+h*0.14); ctx.lineTo(bx+w*0.87,by+h*0.24); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx+w*0.87,by+h*0.14); ctx.lineTo(bx+w*0.8,by+h*0.24); ctx.stroke();
+    const img = dead ? IMGS['capy_dead'] : IMGS['capy'];
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      // Subtle walk bob
+      const bob = Math.sin(walkF * 0.28) * 2;
+      ctx.drawImage(img, x, y + (dead ? 0 : bob), w, h);
+      ctx.restore();
+    } else {
+      // Fallback circle
+      ctx.fillStyle = dead ? '#666' : '#8B6914';
+      ctx.beginPath(); ctx.arc(x + w/2, y + h/2, w/2, 0, Math.PI*2); ctx.fill();
     }
-
-    // Ear
-    ctx.fillStyle = '#7A5C10';
-    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.08, 6*scl, 9*scl, -0.3, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#c4903a';
-    ctx.beginPath(); ctx.ellipse(bx+w*0.74, by+h*0.09, 3.5*scl, 5.5*scl, -0.3, 0, Math.PI*2); ctx.fill();
-
-    ctx.restore();
   }
 
   function spawnPlatform() {
@@ -2312,7 +2252,7 @@ function startCapybara() {
 
   function loop() {
     frame++;
-    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = WORLD.bg; ctx.fillRect(0, 0, W, H);
 
     // Parallax bg
     bgLayers.forEach(layer => {
@@ -2327,12 +2267,12 @@ function startCapybara() {
     });
 
     // Ground
-    ctx.fillStyle = '#1c1c28'; ctx.fillRect(0, GROUND, W, H - GROUND);
+    ctx.fillStyle = WORLD.ground; ctx.fillRect(0, GROUND, W, H - GROUND);
     // Ground line
-    ctx.strokeStyle = '#2a2a3d'; ctx.lineWidth = 2;
+    ctx.strokeStyle = WORLD.groundLine; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
-    // Ground detail dots
-    ctx.fillStyle = '#2d2d42';
+    // Ground detail
+    ctx.fillStyle = WORLD.groundLine;
     for (let i = 0; i < 12; i++) ctx.fillRect(((i * 73 + frame * gameSpeed * 0.4) % W), GROUND + 6, 3, 3);
 
     if (!capy.dead) {
@@ -2349,9 +2289,9 @@ function startCapybara() {
       const p = floatPlats[i];
       if (!capy.dead) p.x -= gameSpeed;
       if (p.x + p.w < -20) { floatPlats.splice(i, 1); continue; }
-      ctx.fillStyle = '#2a2a3d';
+      ctx.fillStyle = WORLD.platColor;
       roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.fill();
-      ctx.strokeStyle = '#3d3d5c'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = WORLD.platBorder; ctx.lineWidth = 1.5;
       roundRect(ctx, p.x, p.y, p.w, p.h, 6); ctx.stroke();
       // Shine
       ctx.fillStyle = 'rgba(255,255,255,0.06)';

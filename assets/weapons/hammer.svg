@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="head" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#b0b8c8"/>
+      <stop offset="30%" style="stop-color:#8898a8"/>
+      <stop offset="100%" style="stop-color:#607080"/>
+    </linearGradient>
+    <linearGradient id="hndl" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7a4a20"/>
+      <stop offset="50%" style="stop-color:#a06030"/>
+      <stop offset="100%" style="stop-color:#7a4a20"/>
+    </linearGradient>
+  </defs>
+  <!-- Handle -->
+  <rect x="44" y="38" width="12" height="60" rx="4" fill="url(#hndl)" stroke="#5a3010" stroke-width="1"/>
+  <!-- Handle straps -->
+  <rect x="44" y="55" width="12" height="3" rx="1" fill="#4a2800" opacity="0.5"/>
+  <rect x="44" y="65" width="12" height="3" rx="1" fill="#4a2800" opacity="0.5"/>
+  <rect x="44" y="75" width="12" height="3" rx="1" fill="#4a2800" opacity="0.5"/>
+  <!-- Head -->
+  <rect x="18" y="8" width="64" height="36" rx="5" fill="url(#head)" stroke="#506070" stroke-width="1.5"/>
+  <!-- Head face highlight -->
+  <rect x="22" y="12" width="56" height="10" rx="3" fill="white" opacity="0.18"/>
+  <!-- Head side face -->
+  <rect x="18" y="8" width="12" height="36" rx="3" fill="#a0b0c0" opacity="0.5"/>
+  <rect x="70" y="8" width="12" height="36" rx="3" fill="#506070" opacity="0.5"/>
+  <!-- Rivets -->
+  <circle cx="28" cy="26" r="3" fill="#404c58" stroke="#607080" stroke-width="0.5"/>
+  <circle cx="72" cy="26" r="3" fill="#404c58" stroke="#607080" stroke-width="0.5"/>
+  <!-- Strike face details -->
+  <line x1="24" y1="20" x2="76" y2="20" stroke="#a0b8c8" stroke-width="1" opacity="0.4"/>
+  <line x1="24" y1="26" x2="76" y2="26" stroke="#809090" stroke-width="0.5" opacity="0.3"/>
+</svg>
