@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="sh" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e2e8f0"/>
+      <stop offset="40%" style="stop-color:#b0b8c8"/>
+      <stop offset="100%" style="stop-color:#708090"/>
+    </linearGradient>
+    <linearGradient id="sh2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#c8d0e0"/>
+      <stop offset="100%" style="stop-color:#607080"/>
+    </linearGradient>
+  </defs>
+  <!-- 4-pointed shuriken: two crossing blades -->
+  <!-- Blade 1: top-left to bottom-right -->
+  <polygon points="50,5 58,42 50,50 42,42" fill="url(#sh)" stroke="#607080" stroke-width="0.8"/>
+  <polygon points="50,95 42,58 50,50 58,58" fill="url(#sh)" stroke="#607080" stroke-width="0.8"/>
+  <!-- Blade 2: top-right to bottom-left -->
+  <polygon points="95,50 58,42 50,50 58,58" fill="url(#sh2)" stroke="#506070" stroke-width="0.8"/>
+  <polygon points="5,50 42,58 50,50 42,42" fill="url(#sh2)" stroke="#506070" stroke-width="0.8"/>
+  <!-- Center circle -->
+  <circle cx="50" cy="50" r="9" fill="#4a5568" stroke="#607080" stroke-width="1.5"/>
+  <circle cx="50" cy="50" r="5" fill="#2d3748" stroke="#4a5568" stroke-width="1"/>
+  <circle cx="50" cy="50" r="2" fill="#718096"/>
+  <!-- Edge highlights -->
+  <line x1="50" y1="7" x2="55" y2="38" stroke="white" stroke-width="1" opacity="0.35"/>
+  <line x1="93" y1="50" x2="62" y2="45" stroke="white" stroke-width="1" opacity="0.25"/>
+  <!-- Sharp edges -->
+  <polygon points="50,5 51,18 49,18" fill="white" opacity="0.3"/>
+  <polygon points="95,50 82,51 82,49" fill="white" opacity="0.25"/>
+  <polygon points="50,95 51,82 49,82" fill="white" opacity="0.3"/>
+  <polygon points="5,50 18,51 18,49" fill="white" opacity="0.25"/>
+</svg>

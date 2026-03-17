@@ -484,7 +484,7 @@ function rnd(a,b){ return a+Math.random()*(b-a); }
 
 // ── IMAGE PRELOADER ───────────────────────────────────
 const IMGS = {};
-const WEAPON_KEYS = ['sword','hammer','scythe','spear','bow','shield','dagger','lightning'];
+const WEAPON_KEYS = ['sword','hammer','scythe','spear','bow','shield','dagger','lightning','wrench','shuriken','axe','boomerang'];
 
 function preloadImages(cb) {
   let loaded = 0;
